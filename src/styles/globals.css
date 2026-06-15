@@ -69,6 +69,26 @@
   white-space: pre;
 }
 
+/* ---------- Slowly rotating spiral ---------- */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 40s linear infinite;
+}
+
+/* ---------- Scroll-reveal heading ---------- */
+.reveal-letter {
+  display: inline-block;
+  opacity: 0;
+  white-space: pre;
+}
+.reveal.in-view .reveal-letter {
+  animation: letter-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
 /* ---------- Drifting radial gradients ---------- */
 @keyframes drift-a {
   0% {
@@ -129,6 +149,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .letter,
+  .reveal-letter,
+  .animate-spin-slow,
   .drift-a,
   .drift-b,
   .drift-c {

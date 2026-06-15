@@ -1,30 +1,40 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { JAGGED_AMP_PX, jaggedTopClip } from '@/lib/jagged'
+import EndHeading from './EndHeading'
+
 const IMG = '/images/processed'
 
-// Harsh, irregular jagged top edge.
-// Deterministic (seeded) so server and client render the same string.
-function buildJaggedTop(steps = 160, maxAmp = 4): string {
-  let seed = 1337
-  const rand = () => {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff
-    return seed / 0x7fffffff
-  }
-  const pts: string[] = []
-  for (let i = 0; i <= steps; i++) {
-    const x = ((i / steps) * 100).toFixed(3)
-    const y = (rand() * maxAmp).toFixed(3)
-    pts.push(`${x}% ${y}%`)
-  }
-  pts.push('100% 100%', '0% 100%')
-  return `polygon(${pts.join(', ')})`
-}
-
-const JAGGED_TOP = buildJaggedTop()
+// Shared jagged top edge (interlocks with the navbar's inverse bottom edge).
+const JAGGED_TOP = jaggedTopClip()
 
 // Only feather the very tips of the teeth so they read as a torn edge
-// instead of dissolving into a flat line. Must stay well below maxAmp.
-const TOP_FADE = 'linear-gradient(to bottom, transparent 0%, black 2.5%)'
+// instead of dissolving into a flat line. Must stay well below the tooth height.
+const TOP_FADE = `linear-gradient(to bottom, transparent 0%, black ${Math.round(
+  JAGGED_AMP_PX * 0.6,
+)}px)`
 
 export default function EndSection() {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(false)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries.some(e => e.isIntersecting)) {
+          setActive(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.4 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
   return (
     <section
       id="tour"
@@ -45,7 +55,10 @@ export default function EndSection() {
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black via-transparent to-black/80" />
 
-      <div className="relative z-10 flex flex-col items-center px-6">
+      <div
+        ref={contentRef}
+        className="relative z-10 flex flex-col items-center px-6"
+      >
         <button
           type="button"
           aria-label="Enter the end"
@@ -56,18 +69,21 @@ export default function EndSection() {
             src={`${IMG}/wgam-spiral-icon.webp`}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 max-w-none -translate-x-1/2 -translate-y-1/2 select-none rounded-full object-cover opacity-90 sm:h-96 sm:w-96"
+            className="animate-spin-slow pointer-events-none absolute inset-0 m-auto h-56 w-56 max-w-none select-none rounded-full object-cover opacity-90"
           />
           <img
             src={`${IMG}/animated-black-splotch.webp`}
             alt="Black splotch"
-            className="relative z-10 h-56 w-56 select-none object-contain sm:h-72 sm:w-72"
+            className="relative z-10 h-56 w-56 select-none object-contain"
+            style={{
+              opacity: active ? 1 : 0,
+              transform: active ? 'scale(1)' : 'scale(0)',
+              transition: 'opacity 2200ms ease-out, transform 2200ms ease-out',
+            }}
           />
         </button>
 
-        <h2 className="font-manufacturing mt-6 text-center text-3xl text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)] sm:text-5xl">
-          are you ready for the end?
-        </h2>
+        <EndHeading active={active} />
       </div>
     </section>
   )

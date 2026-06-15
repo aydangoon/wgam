@@ -6,7 +6,7 @@ export default function Hero() {
   return (
     <section
       id="music"
-      className="relative h-screen w-full overflow-hidden bg-cover bg-center"
+      className="sticky top-0 z-0 h-screen w-full overflow-hidden bg-cover bg-center"
       style={{ backgroundImage: `url(${IMG}/vessel.webp)` }}
     >
       {/* darken the photo a touch for contrast */}
@@ -44,7 +44,7 @@ export default function Hero() {
       />
 
       {/* centered content sitting on a black splotch */}
-      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6">
+      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-12">
         <div className="relative flex flex-col items-center">
           {/* black splotch backdrop */}
           <div
@@ -58,12 +58,12 @@ export default function Hero() {
               <img
                 src={`${IMG}/wgam-front-cover.webp`}
                 alt="Who's Got a Match? cover art"
-                className="backface-hidden absolute inset-0 h-full w-full rounded-sm object-cover shadow-md shadow-black/30"
+                className="backface-hidden absolute inset-0 h-full w-full rounded-sm object-cover shadow-sm shadow-black/30"
               />
               <img
                 src={`${IMG}/wgam-back-cover.webp`}
                 alt="Who's Got a Match? back cover"
-                className="backface-hidden absolute inset-0 h-full w-full rounded-sm object-cover shadow-md shadow-black/30 [transform:rotateY(180deg)]"
+                className="backface-hidden absolute inset-0 h-full w-full rounded-sm object-cover shadow-sm shadow-black/30 [transform:rotateY(180deg)]"
               />
             </div>
           </div>
@@ -71,7 +71,9 @@ export default function Hero() {
           <h2 className="font-manufacturing mt-8 text-center text-4xl text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-5xl">
             Who&apos;s Got a Match
           </h2>
-
+          <div className="text-xl font-manufacturing text-white/80">
+            The debut album, out everywhere.
+          </div>
           <a
             href={LINKS.listenNow}
             className="font-aboreto mt-6 inline-block rounded-sm bg-[hsl(var(--accent))] px-8 py-3 text-sm tracking-[0.25em] text-white transition-transform duration-200 hover:scale-[1.02]"
