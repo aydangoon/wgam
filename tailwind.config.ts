@@ -11,6 +11,8 @@ export default {
     extend: {
       fontFamily: {
         'petit-formal-script': ['var(--font-petit-formal-script)', 'cursive'],
+        aboreto: ['var(--font-aboreto)', 'serif'],
+        manufacturing: ['"Manufacturing Consent"', 'var(--font-aboreto)', 'serif'],
       },
       colors: {
         background: 'hsl(var(--background))',
