@@ -7,7 +7,7 @@ const STEPS = 180
 
 // Tooth height in pixels. Kept in px (not %) so both edges share the same
 // absolute amplitude regardless of their very different element heights.
-export const JAGGED_AMP_PX = 18
+export const JAGGED_AMP_PX = 12
 
 function buildOffsets(): number[] {
   let seed = SEED
