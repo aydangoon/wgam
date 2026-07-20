@@ -201,7 +201,7 @@ export default function EpkGrid() {
               the world. They make music, it is really good and will completely
               blow you away. They are know for their guitar, bass, drums, and
               vocals. Their debut album was phenominal. Everyone loved it. Many
-              people spoke about it. They will release more music. So that's
+              people spoke about it. They will release more music. So that&apos;s
               good.
             </p>
             <BioModal />
