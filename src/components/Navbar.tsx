@@ -1,5 +1,6 @@
 import { NAV_TABS } from '@/lib/links'
 import { jaggedBottomClip } from '@/lib/jagged'
+import { cn } from '@/lib/utils'
 
 const JAGGED_BOTTOM = jaggedBottomClip()
 
@@ -14,7 +15,11 @@ export default function Navbar() {
           <li key={tab.label}>
             <a
               href={tab.href}
-              className="font-aboreto text-sm tracking-[0.2em] text-white/80 transition-colors hover:text-[hsl(var(--accent))] sm:text-base"
+              className={cn(
+                'font-aboreto text-sm tracking-[0.2em] text-white/80 transition-colors sm:text-base',
+                !tab.href && 'cursor-not-allowed',
+                tab.href && 'hover:text-[hsl(var(--accent))]',
+              )}
             >
               {tab.label}
             </a>

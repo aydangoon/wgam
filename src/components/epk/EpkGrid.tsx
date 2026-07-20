@@ -153,17 +153,12 @@ function SpotifyPlaceholder() {
 export default function EpkGrid() {
   return (
     <section className="relative bg-white">
-      {/* Brick grid. Black container = black jagged dividers between white cells. */}
+      {/* Brick grid. Black container = black jagged dividers between white cells.
+          Desktop placement is fully explicit via --c / --r, so DOM order only
+          affects the single-column mobile stack. The cells are ordered here so
+          content and photos ALTERNATE on mobile. */}
       <div className="epk-grid relative z-10 w-full min-h-screen bg-black p-[5px]">
-        {/* --- Row 1: image LEFT --- */}
-        <Photo
-          c="1 / 6"
-          r="1 / 7"
-          seed={22}
-          src={`${PHOTO}/band.JPG`}
-          alt="Band promo photo"
-        />
-
+        {/* Header (desktop row 1, image left) */}
         <Cell
           c="6 / 13"
           r="1 / 7"
@@ -184,7 +179,15 @@ export default function EpkGrid() {
           </div>
         </Cell>
 
-        {/* --- Row 2: image RIGHT --- */}
+        <Photo
+          c="1 / 6"
+          r="1 / 7"
+          seed={22}
+          src={`${PHOTO}/band.JPG`}
+          alt="Band promo photo"
+        />
+
+        {/* Bio (desktop row 2, image right) */}
         <Cell
           c="1 / 8"
           r="7 / 13"
@@ -213,15 +216,7 @@ export default function EpkGrid() {
           alt="Band promo photo"
         />
 
-        {/* --- Row 3: image LEFT --- */}
-        <Photo
-          c="1 / 6"
-          r="13 / 19"
-          seed={88}
-          src={`${PHOTO}/band-6.JPG`}
-          alt="Band promo photo"
-        />
-
+        {/* Stage plot & tech rider (desktop row 3, image left) */}
         <Cell
           c="6 / 13"
           r="13 / 16"
@@ -255,6 +250,15 @@ export default function EpkGrid() {
           </div>
         </Cell>
 
+        <Photo
+          c="1 / 6"
+          r="13 / 19"
+          seed={88}
+          src={`${PHOTO}/band-6.JPG`}
+          alt="Band promo photo"
+        />
+
+        {/* Contact (desktop row 3, image left) */}
         <Cell
           c="6 / 13"
           r="16 / 19"
@@ -297,7 +301,15 @@ export default function EpkGrid() {
           </div>
         </Cell>
 
-        {/* --- Row 4: image RIGHT --- */}
+        <Photo
+          c="8 / 13"
+          r="19 / 25"
+          seed={178}
+          src={`${PHOTO}/band-2.JPG`}
+          alt="Band promo photo"
+        />
+
+        {/* Music videos (desktop row 4, image right) */}
         <Cell
           c="1 / 8"
           r="19 / 22"
@@ -314,6 +326,15 @@ export default function EpkGrid() {
           </div>
         </Cell>
 
+        <Photo
+          c="1 / 6"
+          r="25 / 31"
+          seed={57}
+          src={`${PHOTO}/band-3.JPG`}
+          alt="Band promo photo"
+        />
+
+        {/* Press (desktop row 4, image right) */}
         <Cell
           c="1 / 8"
           r="22 / 25"
@@ -346,23 +367,7 @@ export default function EpkGrid() {
           </div>
         </Cell>
 
-        <Photo
-          c="8 / 13"
-          r="19 / 25"
-          seed={178}
-          src={`${PHOTO}/band-2.JPG`}
-          alt="Band promo photo"
-        />
-
-        {/* --- Row 5: image LEFT --- */}
-        <Photo
-          c="1 / 6"
-          r="25 / 31"
-          seed={57}
-          src={`${PHOTO}/band-3.JPG`}
-          alt="Band promo photo"
-        />
-
+        {/* Discography (desktop row 5, image left) */}
         <Cell
           c="6 / 13"
           r="25 / 31"

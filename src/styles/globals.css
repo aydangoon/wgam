@@ -79,6 +79,91 @@
   animation: spin-slow 40s linear infinite;
 }
 
+/* ---------- Spiral engulfing the screen ---------- */
+/* Timeline (keep in sync with ENGULF_MS in EndSection.tsx):
+   0s – 3.5s   spiral grows to fill the screen, spin ramping up;
+               the splotch grows modestly alongside it (~2.5x)
+   3.5s        spin ramp ends (settles into a slow drift) and the splotch
+               immediately bursts outward, blacking out the screen by 4.5s */
+@keyframes engulf-grow {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(var(--engulf-scale, 20));
+  }
+}
+.engulf-grow {
+  /* near-linear with a gentle speedup toward the end */
+  animation: engulf-grow 3.5s cubic-bezier(0.5, 0.4, 0.75, 0.65) forwards;
+  will-change: transform;
+}
+
+/* Ramp up from the ambient slow spin to a frantic one, then settle into a
+   slow endless drift once the spiral has swallowed the screen. The drift
+   keyframes start where the ramp ends (900deg) so there is no jump. */
+@keyframes engulf-spin-up {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(900deg);
+  }
+}
+@keyframes engulf-spin-drift {
+  from {
+    transform: rotate(900deg);
+  }
+  to {
+    transform: rotate(1260deg);
+  }
+}
+.engulf-spin {
+  /* strong ease-in: barely faster than the ambient spin at first, with the
+     speedup only really kicking in over the back half of the ramp */
+  animation:
+    engulf-spin-up 3.5s cubic-bezier(0.75, 0.05, 0.85, 0.4) forwards,
+    engulf-spin-drift 60s linear 3.5s infinite;
+  will-change: transform;
+}
+
+/* The splotch: modest growth with the spiral, a beat of stillness, then a
+   rapid burst past the viewport edges. */
+@keyframes splotch-grow {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(2.5);
+  }
+}
+@keyframes splotch-burst {
+  from {
+    transform: scale(2.5);
+  }
+  to {
+    transform: scale(var(--splotch-scale, 60));
+  }
+}
+.engulf-splotch {
+  animation:
+    splotch-grow 3.5s cubic-bezier(0.5, 0.4, 0.75, 0.65) forwards,
+    splotch-burst 1s cubic-bezier(0.55, 0, 0.75, 0.5) 3.5s forwards;
+  will-change: transform;
+}
+
+@keyframes engulf-backdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.engulf-backdrop {
+  animation: engulf-backdrop 3s ease-out forwards;
+}
+
 /* ---------- Scroll-reveal heading ---------- */
 .reveal-letter {
   display: inline-block;

@@ -7,9 +7,9 @@ export const LINKS = {
   email: 'mailto:band@example.com',
 }
 
-export const NAV_TABS = [
-  { label: 'MUSIC', href: '#music' },
-  { label: 'VIDEOS', href: '#videos' },
-  { label: 'MERCH', href: '#merch' },
+export const NAV_TABS: Array<{ label: string; href?: string }> = [
+  { label: 'HOME', href: '/' },
+  { label: 'MUSIC', href: '/music' },
+  { label: 'VIDEOS', href: '/videos' },
   { label: 'EPK', href: '/epk' },
 ]
