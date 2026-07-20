@@ -147,6 +147,28 @@
   }
 }
 
+/* ---------- EPK uneven brick grid ---------- */
+.epk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: minmax(130px, auto);
+  gap: 5px;
+}
+.epk-cell {
+  grid-column: var(--cm, auto);
+}
+@media (min-width: 768px) {
+  .epk-grid {
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(30, minmax(42px, auto));
+    grid-auto-rows: auto;
+  }
+  .epk-cell {
+    grid-column: var(--c);
+    grid-row: var(--r);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .letter,
   .reveal-letter,

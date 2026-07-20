@@ -11,5 +11,5 @@ export const NAV_TABS = [
   { label: 'MUSIC', href: '#music' },
   { label: 'VIDEOS', href: '#videos' },
   { label: 'MERCH', href: '#merch' },
-  { label: 'TOUR', href: '#tour' },
+  { label: 'EPK', href: '/epk' },
 ]
