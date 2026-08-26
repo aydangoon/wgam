@@ -232,6 +232,74 @@
   }
 }
 
+/* ---------- Wasted City ---------- */
+.world-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.28) 2px 3px
+  );
+}
+
+.world-static {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.07) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 0 2px,
+      transparent 2px 5px
+    );
+  mix-blend-mode: screen;
+  animation: world-static-flicker 90ms steps(2) infinite;
+}
+@keyframes world-static-flicker {
+  from {
+    transform: translate(0, 0);
+    opacity: 0.85;
+  }
+  to {
+    transform: translate(-1.5%, 1%);
+    opacity: 1;
+  }
+}
+
+.world-glitch {
+  animation: world-glitch 2.8s steps(2) infinite;
+}
+@keyframes world-glitch {
+  0%,
+  86%,
+  100% {
+    filter: none;
+    transform: none;
+  }
+  88% {
+    filter: contrast(1.8) saturate(0.2);
+    transform: translateX(1px);
+  }
+  92% {
+    filter: invert(0.2);
+    transform: translateX(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-static,
+  .world-glitch {
+    animation: none !important;
+  }
+}
+
+/* Pointing-hand; hotspot is the index fingertip. */
+.world-app,
+.world-app :is(a, button, [type='button'], [role='button'], label, select, summary, input, textarea) {
+  cursor: url('/images/world/cut/cursor.png') 3 1, auto;
+}
+
 /* ---------- EPK uneven brick grid ---------- */
 .epk-grid {
   display: grid;

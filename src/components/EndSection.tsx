@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { JAGGED_AMP_PX, jaggedTopClip } from '@/lib/jagged'
 import EndHeading from './EndHeading'
 
 const IMG = '/images/processed'
-const PLACEHOLDER_VIDEO =
-  'https://www.youtube.com/embed/GW4y6Maf9qE?autoplay=1&rel=0'
 
 // Full length of the engulf timeline (spiral grow + splotch burst).
 // Must match the CSS animation timeline in globals.css.
@@ -22,7 +21,7 @@ const TOP_FADE = `linear-gradient(to bottom, transparent 0%, black ${Math.round(
   JAGGED_AMP_PX * 0.6,
 )}px)`
 
-type Phase = 'idle' | 'engulf' | 'video'
+type Phase = 'idle' | 'engulf' | 'world'
 
 interface SpiralOrigin {
   left: number
@@ -60,7 +59,7 @@ export default function EndSection() {
     document.body.style.overflow = 'hidden'
     const timer =
       phase === 'engulf'
-        ? window.setTimeout(() => setPhase('video'), ENGULF_MS)
+        ? window.setTimeout(() => setPhase('world'), ENGULF_MS)
         : undefined
     return () => {
       document.body.style.overflow = ''
@@ -200,19 +199,26 @@ export default function EndSection() {
             {/* video reveal, ~10px breathing room around the viewport */}
             <div
               className={`absolute inset-0 flex items-center justify-center p-[10px] transition-opacity duration-1000 ${
-                phase === 'video'
+                phase === 'world'
                   ? 'opacity-100'
                   : 'pointer-events-none opacity-0'
               }`}
             >
-              {phase === 'video' && (
-                <iframe
-                  src={PLACEHOLDER_VIDEO}
-                  title="Big Buck Bunny"
-                  className="h-full w-full bg-black"
-                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                  allowFullScreen
-                />
+              {phase === 'world' && (
+                <Link
+                  href="/world"
+                  className="relative z-10 flex flex-col items-center px-8 text-center"
+                >
+                  <p className="font-manufacturing text-5xl text-white sm:text-7xl">
+                    THE WASTED CITY
+                  </p>
+                  <p className="font-aboreto mt-5 text-xs tracking-[0.4em] text-white/60">
+                    they are the haves. we are the nots.
+                  </p>
+                  <span className="font-aboreto mt-8 bg-[hsl(var(--accent))] px-6 py-3 text-[11px] tracking-[0.35em] text-white">
+                    ENTER
+                  </span>
+                </Link>
               )}
             </div>
           </div>,

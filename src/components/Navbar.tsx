@@ -10,7 +10,7 @@ export default function Navbar() {
       className="fixed inset-x-0 top-0 z-50 bg-black/80 backdrop-blur-md pb-2"
       style={{ clipPath: JAGGED_BOTTOM, WebkitClipPath: JAGGED_BOTTOM }}
     >
-      <ul className="mx-auto flex h-16 max-w-3xl items-center justify-between px-8 sm:px-12">
+      <ul className="mx-auto flex h-16 max-w-4xl items-center justify-between px-8 sm:px-12">
         {NAV_TABS.map(tab => (
           <li key={tab.label}>
             <a
