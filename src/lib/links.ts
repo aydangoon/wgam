@@ -12,5 +12,4 @@ export const NAV_TABS: Array<{ label: string; href?: string }> = [
   { label: 'MUSIC', href: '/music' },
   { label: 'VIDEOS', href: '/videos' },
   { label: 'EPK', href: '/epk' },
-  { label: 'WORLD', href: '/world' },
 ]

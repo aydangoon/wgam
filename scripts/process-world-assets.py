@@ -3,8 +3,9 @@
 
 Reads public/images/world/raw/* and writes public/images/world/cut/<name>.webp.
 The pointing-hand cursor.png is cut/trimmed and written as cut/cursor.png (no analog
-crush; CSS cursors cap at 128px and need a sharp fingertip). Full-scene plates in
-public/images/world/raw/bgs/ skip cut/punch and write to
+crush; CSS cursors cap at 128px and need a sharp fingertip). tv-static.gif is kept as a
+noise plate and composited into the punched screen of old-tv-transparent-screen.webp.
+Full-scene plates in public/images/world/raw/bgs/ skip cut/punch and write to
 public/images/world/cut/bgs/<name>.webp. Pass --bgs to process plates only, or
 --only=<stem> to process one raw file. Re-running overwrites cut files. Raw files
 are never modified.
@@ -38,6 +39,7 @@ MAP_EDGE = 480
 FIRE_EDGE = 560
 BG_EDGE = 1280
 CURSOR_EDGE = 48
+STATIC_EDGE = 320
 TARGET_KB = 120
 
 PUNCH_SCREEN = {"crt-transparent-screen", "old-tv-transparent-screen"}
@@ -55,6 +57,7 @@ MAP_ICONS = {
     "old-tv-transparent-screen",
 }
 FIRE = {"camp-fire", "wide-fire", "fire-1"}
+STATIC = {"tv-static"}
 
 # Analog-horror crush: real JPEG encode at a small size, then upscale.
 # ImageMagick `-noise Gaussian` errors on IM7 (replaced by `-statistic NonPeak`).
@@ -313,6 +316,33 @@ def resize_max(im: Image.Image, edge: int) -> Image.Image:
     scale = edge / m
     nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
     return im.resize((nw, nh), Image.Resampling.LANCZOS)
+
+
+def resize_cover(im: Image.Image, size: tuple[int, int]) -> Image.Image:
+    tw, th = size
+    w, h = im.size
+    scale = max(tw / max(w, 1), th / max(h, 1))
+    nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+    resized = im.resize((nw, nh), Image.Resampling.BILINEAR)
+    x = max(0, (nw - tw) // 2)
+    y = max(0, (nh - th) // 2)
+    return resized.crop((x, y, x + tw, y + th))
+
+
+def interior_holes(arr: np.ndarray) -> np.ndarray:
+    """Transparent pixels not connected to the image edge (punched screens)."""
+    a = arr[:, :, 3]
+    trans = a <= 8
+    h, w = a.shape
+    seeds: list[tuple[int, int]] = []
+    for x in range(0, w, 2):
+        seeds.append((0, x))
+        seeds.append((h - 1, x))
+    for y in range(0, h, 2):
+        seeds.append((y, 0))
+        seeds.append((y, w - 1))
+    exterior = flood_from_points(arr, seeds, lambda y, x: bool(trans[y, x]))
+    return trans & ~exterior
 
 
 def _rng(key: str) -> np.random.Generator:
@@ -592,6 +622,8 @@ def process_bg(path: Path) -> Image.Image:
 
 
 def process_gif(path: Path):
+    name = path.stem
+    is_static = name in STATIC
     im = Image.open(path)
     w, h = im.size
     n = getattr(im, "n_frames", 1)
@@ -605,14 +637,19 @@ def process_gif(path: Path):
         layer.paste(im.convert("RGBA"), (0, 0))
         composed = Image.alpha_composite(last, layer)
         arr = np.array(composed)
-        arr = apply_mask(arr, flood_from_edges(arr, np.array([0, 0, 0]), BLACK_FUZZ))
+        if not is_static:
+            arr = apply_mask(arr, flood_from_edges(arr, np.array([0, 0, 0]), BLACK_FUZZ))
         frames.append(Image.fromarray(arr, "RGBA"))
         disposal = getattr(im, "disposal_method", 1)
         last = Image.new("RGBA", (w, h), (0, 0, 0, 0)) if disposal == 2 else composed
-    if len(frames) > 24:
+    if not is_static and len(frames) > 24:
         frames = frames[::2]
         durations = durations[::2]
-    resized = [resize_max(fr, FIRE_EDGE) for fr in frames]
+    edge = STATIC_EDGE if is_static else FIRE_EDGE
+    resized = [resize_max(fr, edge) for fr in frames]
+    if is_static:
+        # Noise fill: keep every pixel. Analog crush would smear the grain.
+        return resized, durations
     # Trim using the union of opaque pixels so frames stay aligned.
     boxes = []
     for fr in resized:
@@ -628,6 +665,35 @@ def process_gif(path: Path):
         resized = [fr.crop((x0, y0, x1, y1)) for fr in resized]
     resized = [analog_degrade(fr, f"{path.stem}:{i}") for i, fr in enumerate(resized)]
     return resized, durations
+
+
+def bake_tv_static() -> None:
+    """Fill the punched old-TV screen with looping static. Always from raw."""
+    tv_raw = next((p for p in _image_files(RAW) if p.stem == "old-tv-transparent-screen"), None)
+    static_raw = RAW / "tv-static.gif"
+    if tv_raw is None or not static_raw.exists():
+        return
+    tv, _ = process_still(tv_raw)
+    frames, durs = process_gif(static_raw)
+    hole = interior_holes(np.array(tv))
+    if not hole.any():
+        print("fail bake tv-static: no screen hole", file=sys.stderr)
+        return
+    filled: list[Image.Image] = []
+    for fr in frames:
+        fit = resize_cover(fr.convert("RGBA"), tv.size)
+        base = np.array(tv)
+        fill = np.array(fit)
+        if fill.shape[:2] != base.shape[:2]:
+            fit = fit.resize(tv.size, Image.Resampling.BILINEAR)
+            fill = np.array(fit)
+        base[hole, :3] = fill[hole, :3]
+        base[hole, 3] = 255
+        filled.append(Image.fromarray(base, "RGBA"))
+    dest = CUT / "old-tv-transparent-screen.webp"
+    encode_anim_webp(filled, durs, dest)
+    kb = dest.stat().st_size / 1024
+    print(f"ok  tv-static -> old-tv screen           {kb:7.1f} KB -> {dest.name}")
 
 
 def encode_webp(im: Image.Image, dest: Path, quality: int = 80) -> None:
@@ -697,6 +763,12 @@ def main() -> int:
                 print(f"fail encode {path.name}: {e.stderr.decode()[:400]}", file=sys.stderr)
             except Exception as e:
                 print(f"fail {path.name}: {e}", file=sys.stderr)
+
+        if (not only) or only & {"tv-static", "old-tv-transparent-screen"}:
+            try:
+                bake_tv_static()
+            except Exception as e:
+                print(f"fail bake tv-static: {e}", file=sys.stderr)
 
     if only:
         return 0

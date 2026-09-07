@@ -10,6 +10,7 @@ import {
   type LocationId,
   type PuzzleId,
 } from '@/lib/world/types'
+import { cn } from '@/lib/utils'
 import { useWorldState } from '@/lib/world/useWorldState'
 import WorldHud from './WorldHud'
 import SceneStage from './SceneStage'
@@ -21,6 +22,10 @@ import MatchStrike from './puzzles/MatchStrike'
 const DESKTOP_MIN = 1100
 const STATIC_MS = 320
 const DEBUG_KEY = 'wgam-world-debug'
+/** 500ms per word — slower than average silent reading for tracked UI type. */
+const MS_PER_WORD = 500
+const INSPECT_MIN_MS = 2000
+const INSPECT_FADE_MS = 800
 
 type Props = { initialLocation: string }
 
@@ -29,6 +34,7 @@ export default function WorldApp({ initialLocation }: Props) {
   const [wide, setWide] = useState(true)
   const [muted, setMuted] = useState(false)
   const [inspect, setInspect] = useState<string | null>(null)
+  const [inspectGen, setInspectGen] = useState(0)
   const [puzzle, setPuzzle] = useState<PuzzleId | null>(null)
   const [footage, setFootage] = useState<number | null>(null)
   const [staticOn, setStaticOn] = useState(false)
@@ -94,6 +100,17 @@ export default function WorldApp({ initialLocation }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [toggleDebug])
 
+  const showInspect = useCallback((text: string) => {
+    if (!text) {
+      setInspect(null)
+      return
+    }
+    setInspect(text)
+    setInspectGen(g => g + 1)
+  }, [])
+
+  const clearInspect = useCallback(() => setInspect(null), [])
+
   const flashStatic = useCallback(() => {
     setStaticOn(true)
     if (staticTimer.current) window.clearTimeout(staticTimer.current)
@@ -104,15 +121,15 @@ export default function WorldApp({ initialLocation }: Props) {
   const travel = useCallback(
     (id: LocationId) => {
       if (id === 'alley' && !world.flags.tuned2071) {
-        setInspect('the sunday channel is still snow.')
+        showInspect('the sunday channel is still snow.')
         return
       }
       if (id === 'chapel' && !world.flags.readDoctrine && !world.flags.chapelFound) {
-        setInspect('the margin wants to be followed first.')
+        showInspect('the margin wants to be followed first.')
         return
       }
       if ((id === 'venue' || id === 'fire') && !world.flags.venueUnlocked) {
-        setInspect('chained from the inside. the place is somewhere in the static.')
+        showInspect('chained from the inside. the place is somewhere in the static.')
         return
       }
       if (id === 'fire' && world.location !== 'venue') {
@@ -129,7 +146,7 @@ export default function WorldApp({ initialLocation }: Props) {
       setInverted(false)
       setHoverHotspot(null)
     },
-    [flashStatic, world],
+    [flashStatic, showInspect, world],
   )
 
   useEffect(() => {
@@ -146,9 +163,9 @@ export default function WorldApp({ initialLocation }: Props) {
     }
     if ((loc === 'venue' || loc === 'fire') && !f.venueUnlocked) {
       world.go(f.tuned2071 ? 'alley' : 'map')
-      setInspect('chained from the inside. the place is somewhere in the static.')
+      showInspect('chained from the inside. the place is somewhere in the static.')
     }
-  }, [world.ready, world.location, world.flags, world.go])
+  }, [world.ready, world.location, world.flags, world.go, showInspect])
 
   useEffect(() => {
     setHoverHotspot(null)
@@ -191,15 +208,15 @@ export default function WorldApp({ initialLocation }: Props) {
         travel(action.to)
         break
       case 'inspect':
-        setInspect(action.text)
+        showInspect(action.text)
         break
       case 'flag':
         world.setFlag(action.flag)
         if (action.flag === 'readDoctrine') {
           world.setFlag('chapelFound')
-          setInspect(DOCTRINE_TEXT)
+          showInspect(DOCTRINE_TEXT)
         } else {
-          setInspect(action.text ?? '')
+          showInspect(action.text ?? '')
         }
         break
       case 'puzzle':
@@ -210,9 +227,9 @@ export default function WorldApp({ initialLocation }: Props) {
         setRabbitClicks(n)
         if (n >= 3) {
           world.setFlag('rabbitBlink')
-          setInspect('something under the canvas blinked.')
+          showInspect('something under the canvas blinked.')
         } else {
-          setInspect('the flap twitches.')
+          showInspect('the flap twitches.')
         }
         break
       }
@@ -230,7 +247,7 @@ export default function WorldApp({ initialLocation }: Props) {
       }
       case 'invert':
         if (!reducedMotion) setInverted(v => !v)
-        setInspect('the spiral looks back.')
+        showInspect('the spiral looks back.')
         break
     }
   }
@@ -326,7 +343,7 @@ export default function WorldApp({ initialLocation }: Props) {
             setFootage(null)
             return
           }
-          setInspect(null)
+          clearInspect()
           world.back()
         }}
         onMap={() => travel('map')}
@@ -337,15 +354,11 @@ export default function WorldApp({ initialLocation }: Props) {
       />
 
       {inspect && (
-        <button
-          type="button"
-          className="absolute bottom-8 left-1/2 z-30 max-w-3xl -translate-x-1/2 bg-black px-8 py-4 text-left"
-          onClick={() => setInspect(null)}
-        >
-          <p className="font-aboreto text-center text-xs leading-relaxed tracking-[0.14em] text-white sm:text-sm">
-            {inspect}
-          </p>
-        </button>
+        <InspectBanner
+          key={inspectGen}
+          text={inspect}
+          onDone={clearInspect}
+        />
       )}
 
       {debug && hoverHint && (
@@ -363,7 +376,7 @@ export default function WorldApp({ initialLocation }: Props) {
           already={world.flags.tuned2071}
           onSolved={() => {
             world.setFlag('tuned2071')
-            setInspect('a rabbit face in the snow. MATCH. a stack answers behind the glass.')
+            showInspect('a rabbit face in the snow. MATCH. a stack answers behind the glass.')
           }}
           onClose={() => setPuzzle(null)}
           onStatic={flashStatic}
@@ -375,7 +388,7 @@ export default function WorldApp({ initialLocation }: Props) {
             world.setFlag('knowsMatch')
             world.setFlag('venueUnlocked')
             setPuzzle(null)
-            setInspect('the chain sloughs off like dead skin.')
+            showInspect('the chain sloughs off like dead skin.')
             flashStatic()
           }}
           onClose={() => setPuzzle(null)}
@@ -388,7 +401,7 @@ export default function WorldApp({ initialLocation }: Props) {
           onSolved={() => travel('fire')}
           onNeedMatch={() => {
             setPuzzle(null)
-            setInspect("you're going to need a match. try the wreck.")
+            showInspect("you're going to need a match. try the wreck.")
           }}
           onClose={() => setPuzzle(null)}
         />
@@ -396,6 +409,46 @@ export default function WorldApp({ initialLocation }: Props) {
 
       {staticOn && <div className="world-static pointer-events-none absolute inset-0 z-[80]" />}
     </div>
+  )
+}
+
+function wordCount(text: string) {
+  return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function inspectDurationMs(text: string) {
+  return Math.max(INSPECT_MIN_MS, Math.round(wordCount(text) * MS_PER_WORD))
+}
+
+function InspectBanner({ text, onDone }: { text: string; onDone: () => void }) {
+  const [fading, setFading] = useState(false)
+  const totalMs = inspectDurationMs(text)
+  const fadeMs = INSPECT_FADE_MS
+  const holdMs = Math.max(0, totalMs - fadeMs)
+
+  useEffect(() => {
+    const fadeTimer = window.setTimeout(() => setFading(true), holdMs)
+    const doneTimer = window.setTimeout(onDone, totalMs)
+    return () => {
+      window.clearTimeout(fadeTimer)
+      window.clearTimeout(doneTimer)
+    }
+  }, [holdMs, onDone, totalMs])
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        'absolute bottom-8 left-1/2 z-30 max-w-3xl -translate-x-1/2 bg-black px-8 py-4 text-left transition-opacity ease-out',
+        fading ? 'opacity-0' : 'opacity-100',
+      )}
+      style={{ transitionDuration: `${fadeMs}ms` }}
+      onClick={onDone}
+    >
+      <p className="font-aboreto text-center text-xs leading-relaxed tracking-[0.14em] text-white sm:text-sm">
+        {text}
+      </p>
+    </button>
   )
 }
 

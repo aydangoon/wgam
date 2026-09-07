@@ -1,6 +1,7 @@
 'use client'
 
 import { FOOTAGE_CAPTIONS } from '@/lib/world/graph'
+import { cut } from '@/lib/world/types'
 
 type Props = {
   n: number
@@ -11,17 +12,23 @@ export default function FoundFootage({ n, onClose }: Props) {
   const caption = FOOTAGE_CAPTIONS[n]
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80">
-      <div className="relative w-[min(560px,88vw)]">
-        <div className="relative overflow-hidden border border-[#7fff6a]/30 bg-black">
-          <div className="world-scanlines relative flex aspect-video flex-col items-center justify-center gap-4 px-6">
-            <p className="font-aboreto text-[10px] tracking-[0.45em] text-[#7fff6a]/50">
-              NO SIGNAL
-            </p>
-            <p className="font-manufacturing text-3xl text-[#7fff6a] sm:text-4xl">
+      <div className="relative w-[min(520px,78vw)]">
+        <div className="relative">
+          <img
+            src={cut('old-tv-transparent-screen')}
+            alt=""
+            className="relative z-10 w-full select-none"
+            draggable={false}
+          />
+          <div
+            className="pointer-events-none absolute z-20 flex flex-col items-center justify-end px-4 pb-5 text-center"
+            style={{ left: '8%', top: '10%', width: '65%', height: '72%' }}
+          >
+            <p className="font-aboreto text-[10px] tracking-[0.45em] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
               found footage {n}
             </p>
             {caption && (
-              <p className="font-aboreto max-w-sm text-center text-xs tracking-[0.2em] text-[#7fff6a]/80">
+              <p className="font-manufacturing mt-2 text-2xl text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] sm:text-3xl">
                 {caption}
               </p>
             )}

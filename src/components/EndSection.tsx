@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { JAGGED_AMP_PX, jaggedTopClip } from '@/lib/jagged'
 import EndHeading from './EndHeading'
 
@@ -21,7 +21,7 @@ const TOP_FADE = `linear-gradient(to bottom, transparent 0%, black ${Math.round(
   JAGGED_AMP_PX * 0.6,
 )}px)`
 
-type Phase = 'idle' | 'engulf' | 'world'
+type Phase = 'idle' | 'engulf'
 
 interface SpiralOrigin {
   left: number
@@ -31,11 +31,16 @@ interface SpiralOrigin {
 }
 
 export default function EndSection() {
+  const router = useRouter()
   const contentRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [active, setActive] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [origin, setOrigin] = useState<SpiralOrigin | null>(null)
+
+  useEffect(() => {
+    router.prefetch('/world')
+  }, [router])
 
   useEffect(() => {
     const el = contentRef.current
@@ -53,19 +58,16 @@ export default function EndSection() {
     return () => io.disconnect()
   }, [])
 
-  // Lock page scroll and schedule the video reveal while the overlay is up.
+  // Lock page scroll and go to /world once the overlay has finished.
   useEffect(() => {
     if (phase === 'idle') return
     document.body.style.overflow = 'hidden'
-    const timer =
-      phase === 'engulf'
-        ? window.setTimeout(() => setPhase('world'), ENGULF_MS)
-        : undefined
+    const timer = window.setTimeout(() => router.push('/world'), ENGULF_MS)
     return () => {
       document.body.style.overflow = ''
-      if (timer !== undefined) window.clearTimeout(timer)
+      window.clearTimeout(timer)
     }
-  }, [phase])
+  }, [phase, router])
 
   const beginEnd = () => {
     const btn = buttonRef.current
@@ -194,32 +196,6 @@ export default function EndSection() {
                 aria-hidden
                 className="h-full w-full select-none object-contain"
               />
-            </div>
-
-            {/* video reveal, ~10px breathing room around the viewport */}
-            <div
-              className={`absolute inset-0 flex items-center justify-center p-[10px] transition-opacity duration-1000 ${
-                phase === 'world'
-                  ? 'opacity-100'
-                  : 'pointer-events-none opacity-0'
-              }`}
-            >
-              {phase === 'world' && (
-                <Link
-                  href="/world"
-                  className="relative z-10 flex flex-col items-center px-8 text-center"
-                >
-                  <p className="font-manufacturing text-5xl text-white sm:text-7xl">
-                    THE WASTED CITY
-                  </p>
-                  <p className="font-aboreto mt-5 text-xs tracking-[0.4em] text-white/60">
-                    they are the haves. we are the nots.
-                  </p>
-                  <span className="font-aboreto mt-8 bg-[hsl(var(--accent))] px-6 py-3 text-[11px] tracking-[0.35em] text-white">
-                    ENTER
-                  </span>
-                </Link>
-              )}
             </div>
           </div>,
           document.body,
