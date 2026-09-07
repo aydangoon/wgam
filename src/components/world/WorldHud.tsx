@@ -11,6 +11,7 @@ type Props = {
   onMute: () => void
   onExit: () => void
   onDebug: () => void
+  onResetFlags: () => void
 }
 
 export default function WorldHud({
@@ -21,6 +22,7 @@ export default function WorldHud({
   onMute,
   onExit,
   onDebug,
+  onResetFlags,
 }: Props) {
   const [menu, setMenu] = useState(false)
   return (
@@ -47,6 +49,15 @@ export default function WorldHud({
           >
             {debug ? 'DEBUG ON' : 'DEBUG'}
           </button>
+          {debug && (
+            <button
+              type="button"
+              onClick={onResetFlags}
+              className="pointer-events-auto font-aboreto text-[10px] tracking-[0.25em] text-white/55 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-[#c41e1e]"
+            >
+              RESET FLAGS
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setMenu(v => !v)}

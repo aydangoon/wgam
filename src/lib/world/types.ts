@@ -4,7 +4,7 @@ export type LocationId =
   | 'screen'
   | 'library'
   | 'alley'
-  | 'car'
+  | 'scrapyard'
   | 'chapel'
   | 'venue'
   | 'fire'
@@ -52,7 +52,7 @@ export const LOCATION_IDS: LocationId[] = [
   'screen',
   'library',
   'alley',
-  'car',
+  'scrapyard',
   'chapel',
   'venue',
   'fire',
@@ -79,10 +79,18 @@ export type Hotspot = {
   z?: number
   opacity?: number
   rotate?: number
+  tiltX?: number
+  flipX?: boolean
   filter?: string
   label?: string
+  labelAt?: 'bottom' | 'top' | 'left' | 'right'
+  spin?: boolean
+  className?: string
+  remountKey?: string | number
   fit?: 'contain' | 'cover'
   behind?: boolean
+  /** Fill a punched hole in this sprite. x/y/w/h are % of the image. */
+  screen?: { src: string; x: number; y: number; w: number; h: number }
   visible?: (flags: Flags) => boolean
   action?: HotspotAction
 }
@@ -115,6 +123,7 @@ export function idFromPath(pathname: string): LocationId {
   const parts = pathname.replace(/\/+$/, '').split('/').filter(Boolean)
   const slug = parts[1]
   if (!slug) return 'map'
+  if (slug === 'car') return 'scrapyard'
   return (LOCATION_IDS as string[]).includes(slug) ? (slug as LocationId) : 'map'
 }
 
@@ -124,7 +133,7 @@ export const TITLES: Record<LocationId, string> = {
   screen: 'THE SCREEN',
   library: 'THE LIBRARY',
   alley: 'DEAD CHANNEL',
-  car: 'NEW CRASHED CAR',
+  scrapyard: 'THE SCRAPYARD',
   chapel: 'SPIRAL CHAPEL',
   venue: 'THE VENUE',
   fire: 'THE FIRE',

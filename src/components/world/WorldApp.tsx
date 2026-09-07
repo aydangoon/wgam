@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { DOCTRINE_TEXT, SCENES, sceneHotspots } from '@/lib/world/graph'
 import {
-  PROC,
   describeHotspot,
   type Hotspot,
   type LocationId,
@@ -26,6 +25,11 @@ const DEBUG_KEY = 'wgam-world-debug'
 const MS_PER_WORD = 500
 const INSPECT_MIN_MS = 2000
 const INSPECT_FADE_MS = 800
+const CHAPEL_SPIRAL_HOLD_MS = 3000
+const CHAPEL_SPIRAL_OUT_MS = 950
+const IGNITE_COVER_MS = 700
+const IGNITE_HOLD_MS = 850
+const IGNITE_FADE_MS = 1000
 
 type Props = { initialLocation: string }
 
@@ -39,14 +43,20 @@ export default function WorldApp({ initialLocation }: Props) {
   const [footage, setFootage] = useState<number | null>(null)
   const [staticOn, setStaticOn] = useState(false)
   const [inverted, setInverted] = useState(false)
-  const [idleTv, setIdleTv] = useState(false)
   const [rabbitClicks, setRabbitClicks] = useState(0)
   const [alleySeq, setAlleySeq] = useState<number[]>([])
   const [debug, setDebug] = useState(false)
   const [hoverHotspot, setHoverHotspot] = useState<Hotspot | null>(null)
-  const [hoverIdleTv, setHoverIdleTv] = useState(false)
+  const [chapelSpiralPhase, setChapelSpiralPhase] = useState<'off' | 'in' | 'out'>('off')
+  const [chapelSpiralGen, setChapelSpiralGen] = useState(0)
+  const [ignite, setIgnite] = useState<'off' | 'in' | 'hold' | 'out'>('off')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const staticTimer = useRef<number | undefined>(undefined)
+  const chapelSpiralTimer = useRef<number | undefined>(undefined)
+  const chapelSpiralOutTimer = useRef<number | undefined>(undefined)
+  const igniteTimer = useRef<number | undefined>(undefined)
+  const igniteHoldTimer = useRef<number | undefined>(undefined)
+  const igniteFadeTimer = useRef<number | undefined>(undefined)
 
   const reducedMotion =
     typeof window !== 'undefined' &&
@@ -118,6 +128,37 @@ export default function WorldApp({ initialLocation }: Props) {
     burstNoise()
   }, [])
 
+  const clearIgniteTimers = useCallback(() => {
+    if (igniteTimer.current) window.clearTimeout(igniteTimer.current)
+    if (igniteHoldTimer.current) window.clearTimeout(igniteHoldTimer.current)
+    if (igniteFadeTimer.current) window.clearTimeout(igniteFadeTimer.current)
+  }, [])
+
+  const igniteToFire = useCallback(() => {
+    setInspect(null)
+    setHoverHotspot(null)
+    setInverted(false)
+    if (reducedMotion) {
+      setPuzzle(null)
+      world.go('fire')
+      setIgnite('off')
+      return
+    }
+    clearIgniteTimers()
+    setIgnite('in')
+    igniteTimer.current = window.setTimeout(() => {
+      world.go('fire')
+      setPuzzle(null)
+      setIgnite('hold')
+      igniteHoldTimer.current = window.setTimeout(() => {
+        setIgnite('out')
+        igniteFadeTimer.current = window.setTimeout(() => {
+          setIgnite('off')
+        }, IGNITE_FADE_MS)
+      }, IGNITE_HOLD_MS)
+    }, IGNITE_COVER_MS)
+  }, [clearIgniteTimers, reducedMotion, world])
+
   const travel = useCallback(
     (id: LocationId) => {
       if (id === 'alley' && !world.flags.tuned2071) {
@@ -137,6 +178,10 @@ export default function WorldApp({ initialLocation }: Props) {
         flashStatic()
         return
       }
+      if (id === 'fire' && world.location === 'venue') {
+        igniteToFire()
+        return
+      }
       if (id === 'chapel') world.setFlag('chapelFound')
       flashStatic()
       world.go(id)
@@ -146,7 +191,7 @@ export default function WorldApp({ initialLocation }: Props) {
       setInverted(false)
       setHoverHotspot(null)
     },
-    [flashStatic, showInspect, world],
+    [flashStatic, igniteToFire, showInspect, world],
   )
 
   useEffect(() => {
@@ -167,19 +212,36 @@ export default function WorldApp({ initialLocation }: Props) {
     }
   }, [world.ready, world.location, world.flags, world.go, showInspect])
 
-  useEffect(() => {
-    setHoverHotspot(null)
-    setHoverIdleTv(false)
-  }, [world.location])
+  const clearChapelSpiralTimers = useCallback(() => {
+    if (chapelSpiralTimer.current) window.clearTimeout(chapelSpiralTimer.current)
+    if (chapelSpiralOutTimer.current) window.clearTimeout(chapelSpiralOutTimer.current)
+  }, [])
+
+  const showChapelSpiral = useCallback(() => {
+    clearChapelSpiralTimers()
+    setChapelSpiralPhase('in')
+    setChapelSpiralGen(g => g + 1)
+    chapelSpiralTimer.current = window.setTimeout(() => {
+      setChapelSpiralPhase('out')
+      chapelSpiralOutTimer.current = window.setTimeout(() => {
+        setChapelSpiralPhase('off')
+      }, CHAPEL_SPIRAL_OUT_MS)
+    }, CHAPEL_SPIRAL_HOLD_MS)
+  }, [clearChapelSpiralTimers])
 
   useEffect(() => {
-    if (world.location !== 'map') {
-      setIdleTv(false)
-      return
+    return () => {
+      clearChapelSpiralTimers()
+      clearIgniteTimers()
     }
-    const t = window.setTimeout(() => setIdleTv(true), 30000)
-    return () => window.clearTimeout(t)
-  }, [world.location])
+  }, [clearChapelSpiralTimers, clearIgniteTimers])
+
+  useEffect(() => {
+    setHoverHotspot(null)
+    setInverted(false)
+    setChapelSpiralPhase('off')
+    clearChapelSpiralTimers()
+  }, [world.location, clearChapelSpiralTimers])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -215,11 +277,16 @@ export default function WorldApp({ initialLocation }: Props) {
         if (action.flag === 'readDoctrine') {
           world.setFlag('chapelFound')
           showInspect(DOCTRINE_TEXT)
+          showChapelSpiral()
         } else {
           showInspect(action.text ?? '')
         }
         break
       case 'puzzle':
+        if (action.puzzle === 'strike' && !world.flags.hasMatchbook) {
+          showInspect("a giant match striker, you'll need a match to light it")
+          break
+        }
         setPuzzle(action.puzzle)
         break
       case 'rabbit': {
@@ -247,18 +314,27 @@ export default function WorldApp({ initialLocation }: Props) {
       }
       case 'invert':
         if (!reducedMotion) setInverted(v => !v)
-        showInspect('the spiral looks back.')
+        showInspect(
+          'the spiral looks back. "who\'s got a match... you seek who\'s got a match" it whispers',
+        )
         break
     }
   }
 
   const hotspots = sceneHotspots(world.location, world.flags)
+    .filter(h => h.id !== 'lib-spiral' || chapelSpiralPhase !== 'off')
+    .map(h =>
+      h.id !== 'lib-spiral'
+        ? h
+        : {
+            ...h,
+            remountKey: chapelSpiralGen,
+            className:
+              chapelSpiralPhase === 'out' ? 'world-lib-spiral-out' : 'world-lib-spiral-in',
+          },
+    )
 
-  const hoverHint = hoverIdleTv
-    ? 'idle TV\ngo → THE SCREEN'
-    : hoverHotspot
-      ? describeHotspot(hoverHotspot)
-      : null
+  const hoverHint = hoverHotspot ? describeHotspot(hoverHotspot) : null
 
   if (!wide) {
     return (
@@ -287,44 +363,20 @@ export default function WorldApp({ initialLocation }: Props) {
         hotspots={hotspots}
         bg={SCENES[world.location].bg}
         inverted={inverted}
+        club={world.location === 'venue'}
         debug={debug}
         onActivate={onActivate}
         onHover={setHoverHotspot}
       >
-        {world.location === 'map' && idleTv && (
-          <button
-            type="button"
-            className="absolute right-[4%] bottom-[8%] z-20 w-[9%] bg-transparent p-0"
-            style={debug ? { outline: '2px solid #c026d3' } : undefined}
-            onClick={() => travel('screen')}
-            onMouseEnter={() => setHoverIdleTv(true)}
-            onMouseLeave={() => setHoverIdleTv(false)}
-          >
-            <img
-              src="/images/world/cut/old-tv-transparent-screen.webp"
-              alt=""
-              className="world-glitch w-full"
-            />
-          </button>
-        )}
-        {world.location === 'screen' && (
-          <div
-            className="world-scanlines pointer-events-none absolute left-[36%] top-[22%] z-[3] h-[28%] w-[28%] bg-[#031]
-            opacity-70"
-          />
-        )}
         {world.location === 'venue' && (
-          <div className="pointer-events-none absolute bottom-[18%] left-1/2 z-[7] w-[44%] -translate-x-1/2">
+          <div className="pointer-events-none absolute bottom-[calc(14%-50px)] left-1/2 z-[7] w-[48%] -translate-x-1/2">
             <div
-              className="h-8 w-full bg-[#1a120c]"
+              className="h-20 w-full border border-[#8a6a48]/80 bg-[#4a3224] shadow-[inset_0_2px_0_rgba(255,210,160,0.22),0_0_18px_rgba(196,80,30,0.28)]"
               style={{
                 backgroundImage:
-                  'repeating-linear-gradient(90deg, #2a2018 0 6px, #3a2a1c 6px 8px)',
+                  'repeating-linear-gradient(90deg, #6a4a32 0 10px, #8a6244 10px 14px)',
               }}
             />
-            <p className="font-aboreto mt-1 text-center text-[9px] tracking-[0.3em] text-black/40">
-              striker
-            </p>
           </div>
         )}
         {world.location === 'fire' && <FireTitle />}
@@ -334,6 +386,20 @@ export default function WorldApp({ initialLocation }: Props) {
         muted={muted}
         debug={debug}
         onDebug={toggleDebug}
+        onResetFlags={() => {
+          world.reset()
+          setPuzzle(null)
+          setFootage(null)
+          setInspect(null)
+          setInverted(false)
+          setChapelSpiralPhase('off')
+          clearChapelSpiralTimers()
+          setIgnite('off')
+          clearIgniteTimers()
+          setRabbitClicks(0)
+          setAlleySeq([])
+          setHoverHotspot(null)
+        }}
         onBack={() => {
           if (puzzle) {
             setPuzzle(null)
@@ -376,7 +442,9 @@ export default function WorldApp({ initialLocation }: Props) {
           already={world.flags.tuned2071}
           onSolved={() => {
             world.setFlag('tuned2071')
-            showInspect('a rabbit face in the snow. MATCH. a stack answers behind the glass.')
+            showInspect(
+              'the static stops and a white mask appears. the stack of tvs slowly moves to reveal an entrance',
+            )
           }}
           onClose={() => setPuzzle(null)}
           onStatic={flashStatic}
@@ -388,7 +456,9 @@ export default function WorldApp({ initialLocation }: Props) {
             world.setFlag('knowsMatch')
             world.setFlag('venueUnlocked')
             setPuzzle(null)
-            showInspect('the chain sloughs off like dead skin.')
+            showInspect(
+              'the chain falls away. you hear a muffled pulsing noise from inside',
+            )
             flashStatic()
           }}
           onClose={() => setPuzzle(null)}
@@ -397,14 +467,28 @@ export default function WorldApp({ initialLocation }: Props) {
       )}
       {puzzle === 'strike' && (
         <MatchStrike
-          hasMatchbook={world.flags.hasMatchbook}
           onSolved={() => travel('fire')}
-          onNeedMatch={() => {
-            setPuzzle(null)
-            showInspect("you're going to need a match. try the wreck.")
-          }}
           onClose={() => setPuzzle(null)}
         />
+      )}
+
+      {ignite !== 'off' && (
+        <div
+          className={cn(
+            'world-ignite pointer-events-none absolute inset-0 z-[75]',
+            ignite === 'in' && 'world-ignite-in',
+            ignite === 'hold' && 'world-ignite-hold',
+            ignite === 'out' && 'world-ignite-out',
+          )}
+        >
+          <div className="world-ignite-wash" />
+          <div className="world-ignite-bulb world-ignite-bulb-a" />
+          <div className="world-ignite-bulb world-ignite-bulb-b" />
+          <div className="world-ignite-bulb world-ignite-bulb-c" />
+          <div className="world-ignite-bulb world-ignite-bulb-d" />
+          <div className="world-ignite-bulb world-ignite-bulb-e" />
+          <div className="world-ignite-bulb world-ignite-bulb-f" />
+        </div>
       )}
 
       {staticOn && <div className="world-static pointer-events-none absolute inset-0 z-[80]" />}
@@ -439,7 +523,7 @@ function InspectBanner({ text, onDone }: { text: string; onDone: () => void }) {
     <button
       type="button"
       className={cn(
-        'absolute bottom-8 left-1/2 z-30 max-w-3xl -translate-x-1/2 bg-black px-8 py-4 text-left transition-opacity ease-out',
+        'absolute bottom-8 left-1/2 z-[60] max-w-3xl -translate-x-1/2 bg-black px-8 py-4 text-left transition-opacity ease-out',
         fading ? 'opacity-0' : 'opacity-100',
       )}
       style={{ transitionDuration: `${fadeMs}ms` }}
@@ -454,21 +538,16 @@ function InspectBanner({ text, onDone }: { text: string; onDone: () => void }) {
 
 function FireTitle() {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-end px-6 pb-16">
-      <img
-        src={`${PROC}/animated-black-splotch.webp`}
-        alt=""
-        className="pointer-events-none absolute inset-0 m-auto h-[70%] w-[70%] object-contain opacity-50"
-      />
-      <p className="font-manufacturing relative text-5xl text-black sm:text-7xl">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6">
+      <p className="font-manufacturing relative text-center text-5xl text-white sm:text-7xl">
         Who&apos;s got a match?
       </p>
-      <p className="font-aboreto relative mt-4 max-w-lg text-center text-xs tracking-[0.2em] text-black/70">
+      <p className="font-aboreto relative mt-4 max-w-2xl text-center text-xl font-bold tracking-[0.2em] text-white sm:text-2xl">
         do you want to dream with me? or drift into infinity.
       </p>
       <Link
         href="/music"
-        className="font-aboreto relative mt-8 bg-[hsl(var(--accent))] px-6 py-3 text-[11px] tracking-[0.35em] text-white"
+        className="font-aboreto relative mt-8 bg-[hsl(var(--accent))] px-12 py-6 text-[22px] tracking-[0.35em] text-white"
       >
         LISTEN NOW
       </Link>

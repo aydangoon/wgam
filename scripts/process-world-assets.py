@@ -45,7 +45,24 @@ TARGET_KB = 120
 PUNCH_SCREEN = {"crt-transparent-screen", "old-tv-transparent-screen"}
 PUNCH_EYES = {"white-rabbit-mask"}
 PUNCH_OPENING = {"open-molded-door"}
-REMBG_LIKE = {"match-box"}
+PUNCH_WINDOWS = {"wrecked-rusted-blue-car", "wrecked-rusted-car"}
+PUNCH_ROPES = {"green-tent", "yellow-tent", "red-tent"}
+# Off-white sleeve on white paper: edge-flood only. Interior punch eats the box.
+MATCHBOX = {"match-box"}
+MATCHBOX_FUZZ = 12
+MATCHBOX_HALO_CHROMA = 16
+# Dithered etchings: edge flood misses large paper pockets, but tiny white specks are the texture.
+PUNCH_LARGE_PAPER = {"graves-with-tree"}
+PAPER_LUM = 200
+PAPER_CHROMA = 28
+PAPER_MIN_PX = 80
+# Black figures: enclosed paper in elbow/hand gaps. Tiny blobs are eyes/ticks.
+PUNCH_SILHOUETTE_GAPS = {
+    "guitarist-silhouette",
+    "guitar-silhouette-2",
+    "singer-silhouette",
+}
+SILHOUETTE_GAP_MIN_PX = 15
 MAP_ICONS = {
     "4-tent-cluster",
     "tv-stack",
@@ -516,15 +533,109 @@ def punch_screen(arr: np.ndarray) -> np.ndarray:
 
 
 def punch_eyes(arr: np.ndarray) -> np.ndarray:
+    """Punch flat white in the rabbit-mask sockets. Dark rims stop the face flood."""
     h, w = arr.shape[:2]
-    # Eyes sit in the upper-middle third of a rabbit mask.
-    seeds = [
-        (int(h * 0.42), int(w * 0.32)),
-        (int(h * 0.42), int(w * 0.68)),
-        (int(h * 0.38), int(w * 0.36)),
-        (int(h * 0.38), int(w * 0.64)),
-    ]
-    return punch_interior_bright(arr, seeds, thresh=246)
+    rgb = arr[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    # Sockets sit in the lower face, below the ear bases.
+    seeds: list[tuple[int, int]] = []
+    for fy, fx in ((0.75, 0.33), (0.77, 0.65)):
+        cy, cx = int(h * fy), int(w * fx)
+        for dy in (-20, -10, 0, 10, 20):
+            for dx in (-20, -10, 0, 10, 20):
+                seeds.append((cy + dy, cx + dx))
+
+    def pred(y: int, x: int) -> bool:
+        return bool(a[y, x] > 0 and lum[y, x] >= 246)
+
+    kill = flood_from_points(arr, seeds, pred)
+    k = Image.fromarray((kill.astype(np.uint8) * 255), "L").filter(ImageFilter.MaxFilter(5))
+    kill = (np.array(k) > 0) & (a > 0) & (lum >= 238) & (chroma <= 24)
+    return apply_mask(arr, kill)
+
+
+def harden_eyes(im: Image.Image) -> Image.Image:
+    """Walk leftover paper out from the sockets; stop at the dark rims."""
+    arr = np.array(im.convert("RGBA"))
+    if not interior_holes(arr).any():
+        return im
+    for _ in range(4):
+        holes = interior_holes(arr)
+        grow = np.array(Image.fromarray((holes.astype(np.uint8) * 255), "L").filter(ImageFilter.MaxFilter(3))) > 0
+        rgb = arr[:, :, :3].astype(np.int16)
+        lum = rgb.mean(axis=-1)
+        chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+        a = arr[:, :, 3]
+        kill = grow & (a > 0) & (lum >= 165) & (chroma <= 36)
+        if not kill.any():
+            break
+        arr[kill, 3] = 0
+    return Image.fromarray(arr, "RGBA")
+
+
+def punch_windows(arr: np.ndarray) -> np.ndarray:
+    """Punch leftover white in enclosed glass (and empty sockets that match)."""
+    rgb = arr[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    seed_m = (a > 0) & (lum >= 240) & (chroma <= 18)
+    ys, xs = np.where(seed_m)
+    seeds = list(zip(ys.tolist(), xs.tolist()))
+    if not seeds:
+        return arr
+    if len(seeds) > 2500:
+        seeds = seeds[:: max(1, len(seeds) // 2500)]
+
+    def pred(y: int, x: int) -> bool:
+        return bool(a[y, x] > 0 and lum[y, x] >= 205 and chroma[y, x] <= 32)
+
+    kill = flood_from_points(arr, seeds, pred)
+    k = Image.fromarray((kill.astype(np.uint8) * 255), "L")
+    k = k.filter(ImageFilter.MaxFilter(5))
+    kill = (np.array(k) > 0) & (a > 0) & (chroma <= 40)
+    return apply_mask(arr, kill)
+
+
+def punch_ropes(arr: np.ndarray) -> np.ndarray:
+    """Punch leftover paper white trapped between guy-lines and canvas."""
+    rgb = arr[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    kill = (a > 0) & (lum >= 175) & (chroma <= 22)
+    k = Image.fromarray((kill.astype(np.uint8) * 255), "L").filter(ImageFilter.MaxFilter(3))
+    kill = (np.array(k) > 0) & (a > 0) & (lum >= 160) & (chroma <= 26)
+    return apply_mask(arr, kill)
+
+
+def harden_ropes(im: Image.Image) -> Image.Image:
+    """Drop remaining paper-white after analog crush; keep colored canvas."""
+    arr = np.array(im.convert("RGBA"))
+    rgb = arr[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    arr[(a > 0) & (lum >= 215) & (chroma <= 22), 3] = 0
+    return Image.fromarray(arr, "RGBA")
+
+
+def harden_windows(im: Image.Image) -> Image.Image:
+    """Drop JPEG-brightened rims and watermark specks around punched glass."""
+    arr = np.array(im.convert("RGBA"))
+    holes = interior_holes(arr)
+    if not holes.any():
+        return im
+    touch = np.array(Image.fromarray((holes.astype(np.uint8) * 255), "L").filter(ImageFilter.MaxFilter(5))) > 0
+    rgb = arr[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    kill = touch & (a > 0) & (lum >= 155) & (chroma <= 45)
+    arr[kill, 3] = 0
+    return Image.fromarray(arr, "RGBA")
 
 
 def punch_opening(arr: np.ndarray) -> np.ndarray:
@@ -552,20 +663,129 @@ def punch_opening(arr: np.ndarray) -> np.ndarray:
     return apply_mask(arr, kill)
 
 
-def cut_matchbox(arr: np.ndarray) -> np.ndarray:
-    """White-on-white: keep colored matches and dilate to recover the sleeve."""
+def fill_small_holes(arr: np.ndarray, max_px: int, rgb: tuple[int, int, int] = (22, 22, 22)) -> np.ndarray:
+    """Fill tiny enclosed transparent specks; leave large interior pockets (sky in branches)."""
+    holes = interior_holes(arr)
+    if not holes.any():
+        return arr
+    h, w = holes.shape
+    seen = np.zeros_like(holes)
+    out = arr.copy()
+    for y in range(h):
+        for x in np.where(holes[y] & ~seen[y])[0]:
+            if seen[y, x]:
+                continue
+            q: deque[tuple[int, int]] = deque([(y, x)])
+            seen[y, x] = True
+            cells = [(y, x)]
+            while q:
+                cy, cx = q.popleft()
+                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                    if 0 <= ny < h and 0 <= nx < w and holes[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        q.append((ny, nx))
+                        cells.append((ny, nx))
+            if len(cells) <= max_px:
+                for cy, cx in cells:
+                    out[cy, cx, 0] = rgb[0]
+                    out[cy, cx, 1] = rgb[1]
+                    out[cy, cx, 2] = rgb[2]
+                    out[cy, cx, 3] = 255
+    return out
+
+
+def punch_paper_blobs(arr: np.ndarray, min_px: int) -> np.ndarray:
+    """Punch enclosed paper components at least min_px. Tiny specks stay."""
     rgb = arr[:, :, :3].astype(np.int16)
     lum = rgb.mean(axis=-1)
     chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
-    interesting = (chroma > 14) | (lum < 232)
-    im = Image.fromarray((interesting.astype(np.uint8) * 255), mode="L")
-    im = im.filter(ImageFilter.MaxFilter(9))
-    im = im.filter(ImageFilter.MaxFilter(9))
-    im = im.filter(ImageFilter.MaxFilter(5))
-    mask = np.array(im) > 0
-    out = arr.copy()
-    out[~mask, 3] = 0
-    return out
+    a = arr[:, :, 3]
+    paper = (a > 0) & (lum >= PAPER_LUM) & (chroma <= PAPER_CHROMA)
+    h, w = paper.shape
+    seen = np.zeros_like(paper)
+    kill = np.zeros_like(paper)
+    for y in range(h):
+        for x in np.where(paper[y] & ~seen[y])[0]:
+            if seen[y, x]:
+                continue
+            q: deque[tuple[int, int]] = deque([(y, x)])
+            seen[y, x] = True
+            cells = [(y, x)]
+            while q:
+                cy, cx = q.popleft()
+                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                    if 0 <= ny < h and 0 <= nx < w and paper[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        q.append((ny, nx))
+                        cells.append((ny, nx))
+            if len(cells) >= min_px:
+                for cy, cx in cells:
+                    kill[cy, cx] = True
+    return apply_mask(arr, kill)
+
+
+def punch_large_paper(arr: np.ndarray) -> np.ndarray:
+    """Punch leftover enclosed paper blobs; keep fine dither specks on the subject."""
+    return punch_paper_blobs(arr, PAPER_MIN_PX)
+
+
+def punch_silhouette_gaps(arr: np.ndarray) -> np.ndarray:
+    """Punch leftover paper trapped between limbs; keep isolated eye ticks."""
+    out = punch_paper_blobs(arr, SILHOUETTE_GAP_MIN_PX)
+    rgb = out[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = out[:, :, 3]
+    paper = (a > 0) & (lum >= 190) & (chroma <= 28)
+    touch = _touching_transparent(a, 1)
+    ys, xs = np.where(paper & touch)
+    if len(ys) == 0:
+        return out
+    seeds = list(zip(ys.tolist(), xs.tolist()))
+
+    def pred(y: int, x: int) -> bool:
+        return bool(paper[y, x])
+
+    return apply_mask(out, flood_from_points(out, seeds, pred))
+
+
+def harden_silhouette_gaps(im: Image.Image) -> Image.Image:
+    """Drop analog-brightened paper still sitting in punched limb gaps."""
+    arr = np.array(im.convert("RGBA"))
+    rgb = arr[:, :, :3].astype(np.int16)
+    lum = rgb.mean(axis=-1)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    paper = (a > 0) & (lum >= 120) & (chroma <= 40)
+    # Grow from existing transparency (exterior + punched gaps), not isolated eye ticks.
+    touch = _touching_transparent(a, 1)
+    ys, xs = np.where(paper & touch)
+    if len(ys):
+        seeds = list(zip(ys.tolist(), xs.tolist()))
+        kill = flood_from_points(arr, seeds, lambda y, x: bool(paper[y, x]))
+        arr = apply_mask(arr, kill)
+    return Image.fromarray(arr, "RGBA")
+
+
+def _peel_matchbox_halo(arr: np.ndarray) -> np.ndarray:
+    """Drop 1px of leftover paper on the silhouette; leave the sleeve body."""
+    rgb = arr[:, :, :3].astype(np.int16)
+    chroma = rgb.max(axis=-1) - rgb.min(axis=-1)
+    a = arr[:, :, 3]
+    halo = _touching_transparent(a, 1) & (a > 0) & (chroma <= MATCHBOX_HALO_CHROMA)
+    return apply_mask(arr, halo)
+
+
+def cut_matchbox(arr: np.ndarray) -> np.ndarray:
+    """White sleeve on white paper: drop edge-connected paper, leave the box."""
+    out = apply_mask(arr, flood_from_edges(arr, np.array([255, 255, 255]), MATCHBOX_FUZZ))
+    return _peel_matchbox_halo(out)
+
+
+def harden_matchbox(im: Image.Image) -> Image.Image:
+    """Re-peel analog-brightened paper on the rim only."""
+    arr = _peel_matchbox_halo(np.array(im.convert("RGBA")))
+    return Image.fromarray(trim(arr), "RGBA")
 
 
 def process_still(path: Path) -> Image.Image:
@@ -573,7 +793,7 @@ def process_still(path: Path) -> Image.Image:
     im = to_rgba(Image.open(path))
     arr = np.array(im)
     kind = classify_bg(arr)
-    if name in REMBG_LIKE:
+    if name in MATCHBOX:
         arr = cut_matchbox(arr)
     elif kind == "checker":
         arr = apply_mask(arr, mask_checkerboard(arr))
@@ -590,10 +810,19 @@ def process_still(path: Path) -> Image.Image:
         arr = punch_eyes(arr)
     if name in PUNCH_OPENING:
         arr = punch_opening(arr)
+    if name in PUNCH_WINDOWS:
+        arr = punch_windows(arr)
+    if name in PUNCH_ROPES:
+        arr = punch_ropes(arr)
+    if name in PUNCH_LARGE_PAPER:
+        arr = punch_large_paper(arr)
+    if name in PUNCH_SILHOUETTE_GAPS:
+        arr = punch_silhouette_gaps(arr)
 
     if name == "cursor":
         arr = cursor_defringe(arr)
-    else:
+    elif name not in MATCHBOX:
+        # Soft fringe on an off-white box reads as a white halo; skip it.
         arr = defringe(arr)
     arr = trim(arr)
     out = Image.fromarray(arr, "RGBA")
@@ -610,6 +839,16 @@ def process_still(path: Path) -> Image.Image:
         out = harden_cursor_alpha(out)
     else:
         out = analog_degrade(out, name)
+        if name in PUNCH_WINDOWS:
+            out = harden_windows(out)
+        if name in PUNCH_EYES:
+            out = harden_eyes(out)
+        if name in PUNCH_SILHOUETTE_GAPS:
+            out = harden_silhouette_gaps(out)
+        if name in PUNCH_ROPES:
+            out = harden_ropes(out)
+        if name in MATCHBOX:
+            out = harden_matchbox(out)
     cursor = resize_max(out, 44) if name == "match" else None
     return out, cursor
 

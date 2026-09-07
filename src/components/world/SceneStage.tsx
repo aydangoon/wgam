@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/lib/utils'
 import type { Hotspot } from '@/lib/world/types'
 import HotspotView from './Hotspot'
 
@@ -7,6 +8,7 @@ type Props = {
   hotspots: Hotspot[]
   bg?: string
   inverted?: boolean
+  club?: boolean
   debug?: boolean
   onActivate: (hotspot: Hotspot) => void
   onHover: (hotspot: Hotspot | null) => void
@@ -17,6 +19,7 @@ export default function SceneStage({
   hotspots,
   bg,
   inverted,
+  club,
   debug,
   onActivate,
   onHover,
@@ -26,10 +29,12 @@ export default function SceneStage({
   const front = hotspots.filter(h => !h.behind)
   return (
     <div
-      className="absolute inset-0 overflow-hidden bg-black"
+      className={cn('absolute inset-0 overflow-hidden bg-black', club && 'world-club')}
       style={{
-        filter: inverted ? 'invert(1) hue-rotate(180deg)' : undefined,
-        transition: 'filter 900ms ease',
+        perspective: '800px',
+        perspectiveOrigin: '50% 75%',
+        filter: club ? undefined : inverted ? 'invert(1) hue-rotate(180deg)' : undefined,
+        transition: club ? undefined : 'filter 900ms ease',
       }}
     >
       {bg && (
@@ -37,12 +42,12 @@ export default function SceneStage({
           src={bg}
           alt=""
           draggable={false}
-          className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+          className="world-bg pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
         />
       )}
       {behind.map(h => (
         <HotspotView
-          key={h.id}
+          key={`${h.id}-${h.remountKey ?? ''}`}
           hotspot={h}
           debug={debug}
           onActivate={onActivate}
@@ -52,13 +57,25 @@ export default function SceneStage({
       {children}
       {front.map(h => (
         <HotspotView
-          key={h.id}
+          key={`${h.id}-${h.remountKey ?? ''}`}
           hotspot={h}
           debug={debug}
           onActivate={onActivate}
           onHover={onHover}
         />
       ))}
+      {club && <ClubLights />}
+    </div>
+  )
+}
+
+function ClubLights() {
+  return (
+    <div className="world-club-lights" aria-hidden>
+      <div className="world-club-spot world-club-spot-red" />
+      <div className="world-club-spot world-club-spot-cyan" />
+      <div className="world-club-spot world-club-spot-magenta" />
+      <div className="world-club-floor" />
     </div>
   )
 }
