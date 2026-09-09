@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cut } from '@/lib/world/types'
 import { cn } from '@/lib/utils'
+import { worldAudio } from '@/lib/world/audio'
 
 const HOLD_MS = 3000
 const FADE_MS = 800
@@ -24,10 +25,23 @@ export default function CrtTune({ already, onSolved, onClose, onStatic }: Props)
   onCloseRef.current = onClose
 
   useEffect(() => {
+    if (flash) {
+      worldAudio().setTvStatic(false)
+      return
+    }
+    worldAudio().setTvStatic(true)
+    return () => worldAudio().setTvStatic(false)
+  }, [flash])
+
+  useEffect(() => {
     if (!flash || !solvedNow.current) return
+    const portalTimer = window.setTimeout(() => {
+      worldAudio().playSfx('portal-opens')
+    }, HOLD_MS)
     const fadeTimer = window.setTimeout(() => setFading(true), HOLD_MS)
     const closeTimer = window.setTimeout(() => onCloseRef.current(), HOLD_MS + FADE_MS)
     return () => {
+      window.clearTimeout(portalTimer)
       window.clearTimeout(fadeTimer)
       window.clearTimeout(closeTimer)
     }
@@ -40,6 +54,7 @@ export default function CrtTune({ already, onSolved, onClose, onStatic }: Props)
       solvedNow.current = true
       setFlash(true)
       setError('')
+      worldAudio().playSfx('success')
       onSolved()
       return
     }
@@ -87,7 +102,11 @@ export default function CrtTune({ already, onSolved, onClose, onStatic }: Props)
                   inputMode="numeric"
                   maxLength={4}
                   value={value}
-                  onChange={e => setValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onChange={e => {
+                    const next = e.target.value.replace(/\D/g, '').slice(0, 4)
+                    if (next !== value) worldAudio().playTypeTick()
+                    setValue(next)
+                  }}
                   className="font-aboreto w-28 border-b-2 border-[#7fff6a] bg-transparent text-center text-3xl font-bold tracking-[0.28em] text-[#7fff6a] outline-none"
                   placeholder="0000"
                   aria-label="Channel number"

@@ -584,6 +584,29 @@
   filter: saturate(0.42) contrast(0.68) brightness(0.85);
 }
 
+/* Occasional analog tear: a cloned strip of the scene shears sideways. */
+.world-glitch-base.world-glitch-jitter {
+  transform: translateX(var(--g-jdx, 0px)) skewX(var(--g-jsk, 0deg));
+}
+.world-glitch-shards.is-on .world-glitch-echo {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(var(--g0-top) 0 var(--g0-bot) 0);
+  transform: translate(var(--g0-dx), var(--g0-dy)) skewX(var(--g0-skew));
+}
+.world-glitch-shards.is-on .world-glitch-echo:nth-child(2) {
+  clip-path: inset(var(--g1-top) 0 var(--g1-bot) 0);
+  transform: translate(var(--g1-dx), var(--g1-dy)) skewX(var(--g1-skew));
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-glitch-base.world-glitch-jitter {
+    transform: none !important;
+  }
+  .world-glitch-shards {
+    display: none !important;
+  }
+}
+
 /* ---------- EPK uneven brick grid ---------- */
 .epk-grid {
   display: grid;

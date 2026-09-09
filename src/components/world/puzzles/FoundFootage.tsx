@@ -1,11 +1,19 @@
 'use client'
 
+import { useEffect } from 'react'
+import { worldAudio } from '@/lib/world/audio'
+
 type Props = {
   n: number
   onClose: () => void
 }
 
 export default function FoundFootage({ n, onClose }: Props) {
+  useEffect(() => {
+    worldAudio().setTvStatic(true, 0.021)
+    return () => worldAudio().setTvStatic(false)
+  }, [])
+
   return (
     <button
       type="button"

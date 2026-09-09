@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { cut } from '@/lib/world/types'
+import { worldAudio } from '@/lib/world/audio'
 
 type Props = {
   onSolved: () => void
@@ -50,7 +51,11 @@ export default function PasswordDoor({ onSolved, onClose, onStatic }: Props) {
           <input
             autoFocus
             value={value}
-            onChange={e => setValue(e.target.value)}
+            onChange={e => {
+              const next = e.target.value
+              if (next !== value) worldAudio().playTypeTick()
+              setValue(next)
+            }}
             className="font-aboreto w-full border border-[#7fff6a]/40 bg-black px-2 py-2 text-center text-xl font-bold tracking-[0.2em] text-[#7fff6a] outline-none sm:text-2xl"
             aria-label="Password"
             autoComplete="off"

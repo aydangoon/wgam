@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local tooling
 scripts/.venv-world/
+
+# original / unprocessed audio (large wavs). game uses public/audio/world/*.mp3
+/audio-src/

@@ -4,29 +4,32 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { DOCTRINE_TEXT, SCENES, sceneHotspots } from '@/lib/world/graph'
 import {
+  PROC,
   describeHotspot,
   type Hotspot,
   type LocationId,
   type PuzzleId,
 } from '@/lib/world/types'
+import { sfxForHotspot, worldAudio } from '@/lib/world/audio'
 import { cn } from '@/lib/utils'
 import { useWorldState } from '@/lib/world/useWorldState'
 import WorldHud from './WorldHud'
+import WorldStart from './WorldStart'
+import WorldGlitch from './WorldGlitch'
 import SceneStage from './SceneStage'
+import InspectBanner from './InspectBanner'
 import CrtTune from './puzzles/CrtTune'
 import PasswordDoor from './puzzles/PasswordDoor'
 import FoundFootage from './puzzles/FoundFootage'
 import MatchStrike from './puzzles/MatchStrike'
 
 const DESKTOP_MIN = 1100
+const IS_DEV = process.env.NODE_ENV === 'development'
 const STATIC_MS = 320
 const DEBUG_KEY = 'wgam-world-debug'
-/** 500ms per word — slower than average silent reading for tracked UI type. */
-const MS_PER_WORD = 500
-const INSPECT_MIN_MS = 2000
-const INSPECT_FADE_MS = 800
 const CHAPEL_SPIRAL_HOLD_MS = 3000
 const CHAPEL_SPIRAL_OUT_MS = 950
+const HEAVENLY_MS = 15570
 const IGNITE_COVER_MS = 700
 const IGNITE_HOLD_MS = 850
 const IGNITE_FADE_MS = 1000
@@ -50,23 +53,31 @@ export default function WorldApp({ initialLocation }: Props) {
   const [chapelSpiralPhase, setChapelSpiralPhase] = useState<'off' | 'in' | 'out'>('off')
   const [chapelSpiralGen, setChapelSpiralGen] = useState(0)
   const [ignite, setIgnite] = useState<'off' | 'in' | 'hold' | 'out'>('off')
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [started, setStarted] = useState(false)
+  const [intro, setIntro] = useState(true)
+  const [reducedMotion, setReducedMotion] = useState(false)
   const staticTimer = useRef<number | undefined>(undefined)
   const chapelSpiralTimer = useRef<number | undefined>(undefined)
   const chapelSpiralOutTimer = useRef<number | undefined>(undefined)
+  const invertTimer = useRef<number | undefined>(undefined)
+  const invertGen = useRef(0)
   const igniteTimer = useRef<number | undefined>(undefined)
   const igniteHoldTimer = useRef<number | undefined>(undefined)
   const igniteFadeTimer = useRef<number | undefined>(undefined)
-
-  const reducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
   useEffect(() => {
     const mq = () => setWide(window.innerWidth >= DESKTOP_MIN)
     mq()
     window.addEventListener('resize', mq)
     return () => window.removeEventListener('resize', mq)
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const apply = () => setReducedMotion(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
   }, [])
 
   useEffect(() => {
@@ -80,6 +91,7 @@ export default function WorldApp({ initialLocation }: Props) {
   }, [])
 
   useEffect(() => {
+    if (!IS_DEV) return
     try {
       setDebug(window.sessionStorage.getItem(DEBUG_KEY) === '1')
     } catch {
@@ -100,6 +112,7 @@ export default function WorldApp({ initialLocation }: Props) {
   }, [])
 
   useEffect(() => {
+    if (!IS_DEV) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'd' || e.key === 'D') {
         if ((e.target as HTMLElement | null)?.closest?.('input, textarea')) return
@@ -217,10 +230,39 @@ export default function WorldApp({ initialLocation }: Props) {
     if (chapelSpiralOutTimer.current) window.clearTimeout(chapelSpiralOutTimer.current)
   }, [])
 
+  const clearInvertVision = useCallback(() => {
+    invertGen.current += 1
+    if (invertTimer.current) {
+      window.clearTimeout(invertTimer.current)
+      invertTimer.current = undefined
+    }
+  }, [])
+
+  const startInvertVision = useCallback(() => {
+    if (invertTimer.current) return
+    const gen = invertGen.current + 1
+    invertGen.current = gen
+    if (!reducedMotion) setInverted(true)
+    worldAudio().pauseAmbient()
+    const armEnd = (ms: number) => {
+      if (invertGen.current !== gen) return
+      if (invertTimer.current) window.clearTimeout(invertTimer.current)
+      invertTimer.current = window.setTimeout(() => {
+        if (invertGen.current !== gen) return
+        invertTimer.current = undefined
+        setInverted(false)
+        worldAudio().resumeAmbient()
+      }, ms)
+    }
+    armEnd(HEAVENLY_MS)
+    worldAudio().playSting('heavenly', { gain: 0.85, onReady: armEnd })
+  }, [reducedMotion])
+
   const showChapelSpiral = useCallback(() => {
     clearChapelSpiralTimers()
     setChapelSpiralPhase('in')
     setChapelSpiralGen(g => g + 1)
+    worldAudio().playSfx('portal-opens', { gain: 0.9 })
     chapelSpiralTimer.current = window.setTimeout(() => {
       setChapelSpiralPhase('out')
       chapelSpiralOutTimer.current = window.setTimeout(() => {
@@ -233,38 +275,51 @@ export default function WorldApp({ initialLocation }: Props) {
     return () => {
       clearChapelSpiralTimers()
       clearIgniteTimers()
+      clearInvertVision()
     }
-  }, [clearChapelSpiralTimers, clearIgniteTimers])
+  }, [clearChapelSpiralTimers, clearIgniteTimers, clearInvertVision])
 
   useEffect(() => {
     setHoverHotspot(null)
     setInverted(false)
     setChapelSpiralPhase('off')
     clearChapelSpiralTimers()
-  }, [world.location, clearChapelSpiralTimers])
+    clearInvertVision()
+  }, [world.location, clearChapelSpiralTimers, clearInvertVision])
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    const loc = world.location
-    if (muted) {
-      audio.pause()
+    if (!world.ready) return
+    worldAudio().preloadIntro(world.location)
+  }, [world.ready, world.location])
+
+  useEffect(() => {
+    if (!started) return
+    const audio = worldAudio()
+    audio.unlock()
+    audio.setMuted(muted)
+    audio.setAmbient(world.location)
+  }, [world.location, muted, started])
+
+  useEffect(() => {
+    if (!started) return
+    if (world.flags.venueUnlocked) {
+      worldAudio().preloadLate()
       return
     }
-    if (loc === 'venue') {
-      audio.volume = 0.22
-      audio.play().catch(() => {})
-    } else if (loc === 'fire') {
-      audio.volume = 0.8
-      audio.play().catch(() => {})
-    } else {
-      audio.pause()
-    }
-  }, [world.location, muted])
+    const timer = window.setTimeout(() => worldAudio().preloadLate(), 4000)
+    return () => window.clearTimeout(timer)
+  }, [started, world.flags.venueUnlocked])
+
+  useEffect(() => {
+    return () => worldAudio().stop()
+  }, [])
 
   const onActivate = (hotspot: Hotspot) => {
     const action = hotspot.action
     if (!action) return
+    if (action.type !== 'invert' && !(action.type === 'flag' && action.flag === 'readDoctrine')) {
+      worldAudio().playSfx(sfxForHotspot(hotspot))
+    }
     switch (action.type) {
       case 'go':
         travel(action.to)
@@ -287,6 +342,7 @@ export default function WorldApp({ initialLocation }: Props) {
           showInspect("a giant match striker, you'll need a match to light it")
           break
         }
+        setInspect(null)
         setPuzzle(action.puzzle)
         break
       case 'rabbit': {
@@ -301,6 +357,7 @@ export default function WorldApp({ initialLocation }: Props) {
         break
       }
       case 'footage': {
+        setInspect(null)
         setFootage(action.n)
         if (action.n >= 3 && action.n <= 5) {
           const index = (action.n - 3) as 0 | 1 | 2
@@ -313,7 +370,7 @@ export default function WorldApp({ initialLocation }: Props) {
         break
       }
       case 'invert':
-        if (!reducedMotion) setInverted(v => !v)
+        startInvertVision()
         showInspect(
           'the spiral looks back. "who\'s got a match... you seek who\'s got a match" it whispers',
         )
@@ -356,74 +413,91 @@ export default function WorldApp({ initialLocation }: Props) {
   }
 
   return (
-    <div className="world-app relative h-screen w-screen overflow-hidden bg-black">
-      <audio ref={audioRef} src="/audio/sample-song.mp3" loop preload="auto" />
+    <div
+      className={cn(
+        'world-app relative h-screen w-screen overflow-hidden bg-black',
+      )}
+      onPointerDown={() => worldAudio().unlock()}
+    >
+      <div className="absolute inset-0 grayscale">
+      <div inert={!started}>
+        <WorldGlitch active={started} reducedMotion={reducedMotion}>
+          <SceneStage
+            hotspots={hotspots}
+            bg={SCENES[world.location].bg}
+            inverted={inverted}
+            club={world.location === 'venue'}
+            debug={debug}
+            onActivate={onActivate}
+            onHover={setHoverHotspot}
+          >
+            {world.location === 'venue' && (
+              <div className="pointer-events-none absolute bottom-[calc(14%-50px)] left-1/2 z-[7] w-[48%] -translate-x-1/2">
+                <div
+                  className="h-20 w-full border border-[#8a6a48]/80 bg-[#4a3224] shadow-[inset_0_2px_0_rgba(255,210,160,0.22),0_0_18px_rgba(196,80,30,0.28)]"
+                  style={{
+                    backgroundImage:
+                      'repeating-linear-gradient(90deg, #6a4a32 0 10px, #8a6244 10px 14px)',
+                  }}
+                />
+              </div>
+            )}
+            {world.location === 'fire' && <FireTitle />}
+          </SceneStage>
+        </WorldGlitch>
+      </div>
 
-      <SceneStage
-        hotspots={hotspots}
-        bg={SCENES[world.location].bg}
-        inverted={inverted}
-        club={world.location === 'venue'}
-        debug={debug}
-        onActivate={onActivate}
-        onHover={setHoverHotspot}
-      >
-        {world.location === 'venue' && (
-          <div className="pointer-events-none absolute bottom-[calc(14%-50px)] left-1/2 z-[7] w-[48%] -translate-x-1/2">
-            <div
-              className="h-20 w-full border border-[#8a6a48]/80 bg-[#4a3224] shadow-[inset_0_2px_0_rgba(255,210,160,0.22),0_0_18px_rgba(196,80,30,0.28)]"
-              style={{
-                backgroundImage:
-                  'repeating-linear-gradient(90deg, #6a4a32 0 10px, #8a6244 10px 14px)',
-              }}
-            />
-          </div>
-        )}
-        {world.location === 'fire' && <FireTitle />}
-      </SceneStage>
-
-      <WorldHud
-        muted={muted}
-        debug={debug}
-        onDebug={toggleDebug}
-        onResetFlags={() => {
-          world.reset()
-          setPuzzle(null)
-          setFootage(null)
-          setInspect(null)
-          setInverted(false)
-          setChapelSpiralPhase('off')
-          clearChapelSpiralTimers()
-          setIgnite('off')
-          clearIgniteTimers()
-          setRabbitClicks(0)
-          setAlleySeq([])
-          setHoverHotspot(null)
-        }}
-        onBack={() => {
-          if (puzzle) {
+      {started && (
+        <WorldHud
+          dev={IS_DEV}
+          muted={muted}
+          debug={debug}
+          onDebug={toggleDebug}
+          onResetFlags={() => {
+            world.reset()
             setPuzzle(null)
-            return
-          }
-          if (footage !== null) {
             setFootage(null)
-            return
-          }
-          clearInspect()
-          world.back()
-        }}
-        onMap={() => travel('map')}
-        onMute={() => setMuted(m => !m)}
-        onExit={() => {
-          window.location.href = '/'
-        }}
-      />
+            setInspect(null)
+            setInverted(false)
+            setChapelSpiralPhase('off')
+            clearChapelSpiralTimers()
+            clearInvertVision()
+            worldAudio().stopSting()
+            worldAudio().resumeAmbient()
+            setIgnite('off')
+            clearIgniteTimers()
+            setRabbitClicks(0)
+            setAlleySeq([])
+            setHoverHotspot(null)
+          }}
+          onBack={() => {
+            if (puzzle) {
+              setPuzzle(null)
+              return
+            }
+            if (footage !== null) {
+              setFootage(null)
+              return
+            }
+            clearInspect()
+            world.back()
+          }}
+          onMap={() => travel('map')}
+          onMute={() => setMuted(m => !m)}
+          onMenuOpen={clearInspect}
+          onExit={() => {
+            window.location.href = '/'
+          }}
+        />
+      )}
 
-      {inspect && (
+      {started && inspect && puzzle == null && footage == null && (
         <InspectBanner
           key={inspectGen}
           text={inspect}
           onDone={clearInspect}
+          muted={muted}
+          reducedMotion={reducedMotion}
         />
       )}
 
@@ -492,47 +566,25 @@ export default function WorldApp({ initialLocation }: Props) {
       )}
 
       {staticOn && <div className="world-static pointer-events-none absolute inset-0 z-[80]" />}
-    </div>
-  )
-}
 
-function wordCount(text: string) {
-  return text.trim().split(/\s+/).filter(Boolean).length
-}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[90] bg-repeat opacity-[0.08] mix-blend-overlay"
+        style={{ backgroundImage: `url(${PROC}/film-grain-overlay.webp)` }}
+      />
+      </div>
 
-function inspectDurationMs(text: string) {
-  return Math.max(INSPECT_MIN_MS, Math.round(wordCount(text) * MS_PER_WORD))
-}
-
-function InspectBanner({ text, onDone }: { text: string; onDone: () => void }) {
-  const [fading, setFading] = useState(false)
-  const totalMs = inspectDurationMs(text)
-  const fadeMs = INSPECT_FADE_MS
-  const holdMs = Math.max(0, totalMs - fadeMs)
-
-  useEffect(() => {
-    const fadeTimer = window.setTimeout(() => setFading(true), holdMs)
-    const doneTimer = window.setTimeout(onDone, totalMs)
-    return () => {
-      window.clearTimeout(fadeTimer)
-      window.clearTimeout(doneTimer)
-    }
-  }, [holdMs, onDone, totalMs])
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        'absolute bottom-8 left-1/2 z-[60] max-w-3xl -translate-x-1/2 bg-black px-8 py-4 text-left transition-opacity ease-out',
-        fading ? 'opacity-0' : 'opacity-100',
+      {intro && (
+        <WorldStart
+          onUnlock={() => {
+            worldAudio().unlock()
+            setMuted(false)
+            setStarted(true)
+          }}
+          onReady={() => setIntro(false)}
+        />
       )}
-      style={{ transitionDuration: `${fadeMs}ms` }}
-      onClick={onDone}
-    >
-      <p className="font-aboreto text-center text-xs leading-relaxed tracking-[0.14em] text-white sm:text-sm">
-        {text}
-      </p>
-    </button>
+    </div>
   )
 }
 

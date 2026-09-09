@@ -93,6 +93,8 @@ export type Hotspot = {
   screen?: { src: string; x: number; y: number; w: number; h: number }
   visible?: (flags: Flags) => boolean
   action?: HotspotAction
+  /** Optional SFX id (`click`, `fabric`, `paper`, …). Overrides id-based mapping. */
+  sfx?: string
 }
 
 export type Scene = {

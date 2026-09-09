@@ -6,23 +6,27 @@ import { cn } from '@/lib/utils'
 type Props = {
   muted: boolean
   debug: boolean
+  dev?: boolean
   onBack: () => void
   onMap: () => void
   onMute: () => void
   onExit: () => void
   onDebug: () => void
   onResetFlags: () => void
+  onMenuOpen?: () => void
 }
 
 export default function WorldHud({
   muted,
   debug,
+  dev = false,
   onBack,
   onMap,
   onMute,
   onExit,
   onDebug,
   onResetFlags,
+  onMenuOpen,
 }: Props) {
   const [menu, setMenu] = useState(false)
   return (
@@ -32,44 +36,52 @@ export default function WorldHud({
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="pointer-events-auto font-aboreto text-2xl leading-none text-[#c41e1e] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-white"
+          className="pointer-events-auto font-aboreto text-[2.8125rem] leading-none text-[#c41e1e] drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] hover:text-white"
         >
           ←
         </button>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onDebug}
-            className={cn(
-              'pointer-events-auto font-aboreto text-[10px] tracking-[0.25em]',
-              debug
-                ? 'text-[#c41e1e] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]'
-                : 'text-white/55 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-white',
-            )}
-          >
-            {debug ? 'DEBUG ON' : 'DEBUG'}
-          </button>
-          {debug && (
+        {dev && (
+          <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={onResetFlags}
-              className="pointer-events-auto font-aboreto text-[10px] tracking-[0.25em] text-white/55 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-[#c41e1e]"
+              onClick={onDebug}
+              className={cn(
+                'pointer-events-auto font-aboreto text-[10px] tracking-[0.25em]',
+                debug
+                  ? 'text-[#c41e1e] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]'
+                  : 'text-white/55 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-white',
+              )}
             >
-              RESET FLAGS
+              {debug ? 'DEBUG ON' : 'DEBUG'}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setMenu(v => !v)}
-            aria-label="Menu"
-            className="pointer-events-auto font-aboreto text-lg tracking-[0.2em] text-[#c41e1e] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-white"
-          >
-            ≡
-          </button>
-        </div>
+            {debug && (
+              <button
+                type="button"
+                onClick={onResetFlags}
+                className="pointer-events-auto font-aboreto text-[10px] tracking-[0.25em] text-white/55 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-[#c41e1e]"
+              >
+                RESET FLAGS
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(v => {
+                  const next = !v
+                  if (next) onMenuOpen?.()
+                  return next
+                })
+              }}
+              aria-label="Menu"
+              className="pointer-events-auto font-aboreto text-lg tracking-[0.2em] text-[#c41e1e] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] hover:text-white"
+            >
+              ≡
+            </button>
+          </div>
+        )}
       </div>
 
-      {menu && (
+      {dev && menu && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
           <div className="flex flex-col items-center gap-5 text-center">
             <p className="font-manufacturing text-4xl text-[#c41e1e] sm:text-5xl">
