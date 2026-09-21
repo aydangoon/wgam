@@ -43,7 +43,7 @@ export const TRACKS: Track[] = [
 ]
 
 /** Track that starts playing when the EPK is entered. */
-export const BACKGROUND_TRACK_ID = 'little-white-pills'
+export const BACKGROUND_TRACK_ID = 'new-crashed-car'
 
 export function formatDuration(seconds: number) {
   const s = Math.max(0, Math.round(seconds))
