@@ -1,0 +1,15 @@
+{
+  "id": "new-crashed-car",
+  "title": "New Crashed Car",
+  "width": 1280,
+  "height": 720,
+  "duration": 197.830967,
+  "mp4": {
+    "url": "https://vbrvbofwi5f71c0o.public.blob.vercel-storage.com/epk/video/new-crashed-car.mp4",
+    "bytes": 80055446
+  },
+  "poster": {
+    "url": "https://vbrvbofwi5f71c0o.public.blob.vercel-storage.com/epk/video/new-crashed-car-poster.jpg",
+    "bytes": 54050
+  }
+}

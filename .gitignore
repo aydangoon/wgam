@@ -45,3 +45,11 @@ scripts/.venv-world/
 
 # original / unprocessed audio (large wavs). game uses public/audio/world/*.mp3
 /audio-src/
+
+# high-res press photos (16-46 MB each). uploaded to Vercel Blob via
+# `npm run photos:upload`; the site reads src/lib/epk/photos.json
+/photos-src/
+
+# original music video export (~230 MB). web encode uploaded to Vercel Blob via
+# `npm run video:upload -- video-src/<file>`; the site reads src/lib/epk/video.json
+/video-src/

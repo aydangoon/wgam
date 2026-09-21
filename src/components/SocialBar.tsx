@@ -1,5 +1,5 @@
 import { Mail } from 'lucide-react'
-import { LINKS } from '@/lib/links'
+import { LINKS, SHOW_SOCIALS } from '@/lib/links'
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -34,18 +34,20 @@ const ICONS = [
 export default function SocialBar() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center gap-7 pb-5">
-      {ICONS.map(({ key, label, href, Icon }) => (
-        <a
-          key={key}
-          href={href}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label={label}
-          className="text-white/80 transition-colors duration-200 hover:text-[hsl(var(--accent))]"
-        >
-          <Icon className="h-7 w-7" />
-        </a>
-      ))}
+      {/* Socials are hidden until the accounts are live (SHOW_SOCIALS in links.ts). */}
+      {SHOW_SOCIALS &&
+        ICONS.map(({ key, label, href, Icon }) => (
+          <a
+            key={key}
+            href={href}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={label}
+            className="text-white/80 transition-colors duration-200 hover:text-[hsl(var(--accent))]"
+          >
+            <Icon className="h-7 w-7" />
+          </a>
+        ))}
       <a
         href={LINKS.email}
         aria-label="Email"

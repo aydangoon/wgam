@@ -620,13 +620,112 @@
 @media (min-width: 768px) {
   .epk-grid {
     grid-template-columns: repeat(12, 1fr);
-    grid-template-rows: repeat(30, minmax(42px, auto));
+    grid-template-rows: repeat(32, minmax(42px, auto));
     grid-auto-rows: auto;
   }
   .epk-cell {
     grid-column: var(--c);
     grid-row: var(--r);
   }
+}
+
+/* ---------- EPK music player ---------- */
+/* Spotify-style "now playing" bars: each bar has its own keyframes, duration
+   and phase so they never move in sync. */
+@keyframes epk-eq-1 {
+  0% { height: 35%; }
+  20% { height: 90%; }
+  45% { height: 50%; }
+  70% { height: 100%; }
+  100% { height: 35%; }
+}
+@keyframes epk-eq-2 {
+  0% { height: 100%; }
+  25% { height: 40%; }
+  50% { height: 75%; }
+  80% { height: 25%; }
+  100% { height: 100%; }
+}
+@keyframes epk-eq-3 {
+  0% { height: 55%; }
+  30% { height: 100%; }
+  55% { height: 30%; }
+  75% { height: 80%; }
+  100% { height: 55%; }
+}
+.epk-eq-bar {
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  transform-origin: bottom;
+}
+.epk-eq-bar:nth-child(1) {
+  animation-name: epk-eq-1;
+  animation-duration: 1.05s;
+}
+.epk-eq-bar:nth-child(2) {
+  animation-name: epk-eq-2;
+  animation-duration: 0.85s;
+  animation-delay: -0.3s;
+}
+.epk-eq-bar:nth-child(3) {
+  animation-name: epk-eq-3;
+  animation-duration: 1.2s;
+  animation-delay: -0.6s;
+}
+.epk-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    hsl(var(--accent)) 0%,
+    hsl(var(--accent)) var(--progress, 0%),
+    rgb(255 255 255 / 0.15) var(--progress, 0%),
+    rgb(255 255 255 / 0.15) 100%
+  );
+}
+.epk-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: white;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.epk-scrubber:hover::-webkit-slider-thumb,
+.epk-scrubber:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+.epk-scrubber::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 9999px;
+  background: white;
+}
+
+/* ---------- EPK photo carousel ---------- */
+@keyframes epk-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.epk-shimmer {
+  background: linear-gradient(
+    100deg,
+    rgb(255 255 255 / 0.03) 20%,
+    rgb(255 255 255 / 0.1) 50%,
+    rgb(255 255 255 / 0.03) 80%
+  );
+  background-size: 200% 100%;
+  animation: epk-shimmer 1.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

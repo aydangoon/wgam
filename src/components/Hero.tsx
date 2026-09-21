@@ -72,7 +72,7 @@ export default function Hero() {
             Who&apos;s Got a Match
           </h2>
           <div className="text-xl font-manufacturing text-white/80">
-            The debut album, out everywhere.
+            The debut album, coming soon.
           </div>
           <a
             href={LINKS.listenNow}
