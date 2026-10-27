@@ -43,6 +43,10 @@ next-env.d.ts
 # local tooling
 scripts/.venv-world/
 
+# email list exports (`npm run emails:export`) — personal data, never commit
+/emails.csv
+/*.emails.csv
+
 # original / unprocessed audio (large wavs). game uses public/audio/world/*.mp3
 /audio-src/
 

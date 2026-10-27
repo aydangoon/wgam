@@ -1,14 +1,15 @@
 // Central place to edit external links. Replace the placeholder URLs below.
 export const LINKS = {
   listenNow: '#',
-  tiktok: 'https://www.tiktok.com/',
+  tiktok: 'https://www.tiktok.com/@whosgotamatchband',
+  youtube: 'https://www.youtube.com/@Whosgotamatchband',
   spotify: 'https://open.spotify.com/',
-  instagram: 'https://www.instagram.com/',
+  instagram: 'https://www.instagram.com/whosgotamatchband',
   email: 'mailto:whosgotamatchband@gmail.com',
 }
 
-/** Socials are hidden until the accounts are live; only the email icon shows. */
-export const SHOW_SOCIALS = false
+/** Bottom-bar social icons. Email always shows beside them. */
+export const SHOW_SOCIALS = true
 
 export const NAV_TABS: Array<{
   label: string

@@ -9,10 +9,10 @@ function TikTokIcon({ className }: { className?: string }) {
   )
 }
 
-function SpotifyIcon({ className }: { className?: string }) {
+function YouTubeIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.59 14.44a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.22c3.81-.87 7.08-.5 9.72 1.11.3.18.39.57.21.86zm1.22-2.72a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.24 1.33.37.23.49.71.25 1.07zm.11-2.84C14.8 8.96 9.4 8.78 6.32 9.72a.93.93 0 1 1-.54-1.78c3.53-1.07 9.49-.86 13.24 1.36a.93.93 0 0 1-.95 1.6z" />
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
     </svg>
   )
 }
@@ -26,15 +26,15 @@ function InstagramIcon({ className }: { className?: string }) {
 }
 
 const ICONS = [
-  { key: 'tiktok', label: 'TikTok', href: LINKS.tiktok, Icon: TikTokIcon },
-  { key: 'spotify', label: 'Spotify', href: LINKS.spotify, Icon: SpotifyIcon },
   { key: 'instagram', label: 'Instagram', href: LINKS.instagram, Icon: InstagramIcon },
+  { key: 'tiktok', label: 'TikTok', href: LINKS.tiktok, Icon: TikTokIcon },
+  { key: 'youtube', label: 'YouTube', href: LINKS.youtube, Icon: YouTubeIcon },
 ] as const
 
 export default function SocialBar() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center gap-7 pb-5">
-      {/* Socials are hidden until the accounts are live (SHOW_SOCIALS in links.ts). */}
+      {/* Toggle the social icons from SHOW_SOCIALS in links.ts. */}
       {SHOW_SOCIALS &&
         ICONS.map(({ key, label, href, Icon }) => (
           <a

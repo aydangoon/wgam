@@ -1,4 +1,5 @@
-import { LINKS } from '@/lib/links'
+import Countdown from './Countdown'
+import EmailCapture from './EmailCapture'
 
 const IMG = '/images/processed'
 
@@ -43,43 +44,31 @@ export default function Hero() {
         style={{ backgroundImage: `url(${IMG}/film-grain-overlay.webp)` }}
       />
 
-      {/* centered content sitting on a black splotch */}
+      {/* soft vignette behind the content for legibility (no hard shape) */}
+      <div
+        className="pointer-events-none absolute inset-0 z-[15]"
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 75%)',
+        }}
+      />
+
+      {/* centered content */}
       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-12">
-        <div className="relative flex flex-col items-center">
-          {/* black splotch backdrop */}
-          <div
-            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[140%] w-[150%] -translate-x-1/2 -translate-y-1/2 bg-contain bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${IMG}/black-splotch-1.webp)` }}
-          />
+        <div className="flex w-[min(92vw,60rem)] flex-col items-center">
+          {/* single focal point */}
+          <h1 className="font-manufacturing text-center text-6xl leading-[0.95] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] sm:text-8xl md:text-9xl">
+            Who&apos;s Got a Match?
+          </h1>
 
-          {/* 3D flip cover */}
-          <div className="group perspective-1200">
-            <div className="preserve-3d relative h-72 w-72 transition-transform duration-700 ease-in-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] sm:h-80 sm:w-80">
-              <img
-                src={`${IMG}/wgam-front-cover.webp`}
-                alt="Who's Got a Match? cover art"
-                className="backface-hidden absolute inset-0 h-full w-full rounded-sm object-cover shadow-sm shadow-black/30"
-              />
-              <img
-                src={`${IMG}/wgam-back-cover.webp`}
-                alt="Who's Got a Match? back cover"
-                className="backface-hidden absolute inset-0 h-full w-full rounded-sm object-cover shadow-sm shadow-black/30 [transform:rotateY(180deg)]"
-              />
-            </div>
-          </div>
+          {/* eyebrow + countdown as one quiet unit */}
+          <p className="font-aboreto mt-8 text-center text-[0.7rem] tracking-[0.4em] text-white/70 sm:text-xs">
+            WORLDGOV SHUTS THIS DOWN IN
+          </p>
+          <Countdown className="mt-3" />
 
-          <h2 className="font-manufacturing mt-8 text-center text-4xl text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] sm:text-5xl">
-            Who&apos;s Got a Match
-          </h2>
-          <div className="text-xl font-manufacturing text-white/80">
-            The debut album, coming soon.
-          </div>
-          <a
-            href={LINKS.listenNow}
-            className="font-aboreto mt-6 inline-block rounded-sm bg-[hsl(var(--accent))] px-8 py-3 text-sm tracking-[0.25em] text-white transition-transform duration-200 hover:scale-[1.02]"
-          >
-            LISTEN NOW
-          </a>
+          {/* collapses away (with its own top spacing) after a successful signup */}
+          <EmailCapture />
         </div>
       </div>
     </section>
