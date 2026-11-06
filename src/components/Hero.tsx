@@ -1,4 +1,3 @@
-import Countdown from './Countdown'
 import EmailCapture from './EmailCapture'
 
 const IMG = '/images/processed'
@@ -60,12 +59,6 @@ export default function Hero() {
           <h1 className="font-manufacturing text-center text-6xl leading-[0.95] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] sm:text-8xl md:text-9xl">
             Who&apos;s Got a Match?
           </h1>
-
-          {/* eyebrow + countdown as one quiet unit */}
-          <p className="font-aboreto mt-8 text-center text-[0.7rem] tracking-[0.4em] text-white/70 sm:text-xs">
-            WORLDGOV SHUTS THIS DOWN IN
-          </p>
-          <Countdown className="mt-3" />
 
           {/* collapses away (with its own top spacing) after a successful signup */}
           <EmailCapture />
